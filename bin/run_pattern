@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/usr/local/package/jdk1.5/bin/java -cp /usr/local/package/ibis-1.4.1/lib/ibis-connect-1.0.jar:/usr/local/package/ibis-1.4.1/lib/ibis-1.4.1.jar:/usr/local/package/ibis-1.4.1/lib/ibis-util-1.0rc1.jar:/usr/local/package/ibis-1.4.1/lib/log4j-1.2.9.jar:/home0/amo/benchmark_Comm_pattern/mcast/ftrepmi.jar:. -Ddebug=true -Dibis.pool.total_hosts=$4 -Dibis.name_server.host=fs0.das3.cs.vu.nl -Dibis.name_server.port=$3 -Dibis.name_server.key=pattern Latency 1000 -u &> $4-$1

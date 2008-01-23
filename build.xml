@@ -1,6 +1,6 @@
-<project name="mpj" default="build" basedir=".">
+<project name="repmi" default="build" basedir=".">
     <description>
-	Build file for Ibis MPJ implementation
+	Build file for Ibis RepMI implementation
     </description>
 
     <property name="version" value="-2.0" />

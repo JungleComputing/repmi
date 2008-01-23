@@ -3,19 +3,16 @@ package ibis.repmi.commTest;
 
 
 import ibis.ipl.*;
-import ibis.util.PoolInfo;
 
 import java.util.Properties;
 import java.io.IOException;
-
-import ibis.mpj.*;
 
 import ftrepmi.comm.*;
 import ftrepmi.protocol.LTVector;
 
 class LatencyDummyMsg {
 
-	static Ibis ibis;
+/*	static Ibis ibis;
 
 	static Registry registry;
 
@@ -40,7 +37,7 @@ class LatencyDummyMsg {
 	}
 
 	public static void main(String[] args) {
-		/* Parse commandline. */
+		 Parse commandline. 
 
 		boolean upcall = false;
 		int NOPS = 1000;
@@ -235,4 +232,5 @@ class LatencyDummyMsg {
 			e.printStackTrace();
 		}
 	}
+        */
 }

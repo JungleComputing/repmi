@@ -2,16 +2,11 @@ package ibis.repmi.commTest;
 /* $Id: Latency.java,v 1.15 2004/11/24 10:52:16 ceriel Exp $ */
 
 
-import ibis.ipl.*;
 import ibis.repmi.comm.*;
 import ibis.repmi.protocol.LTVector;
 import ibis.repmi.protocol.Operation;
 import ibis.repmi.protocol.ProcessIdentifier;
 import ibis.repmi.protocol.ReplicatedMethod;
-
-import java.util.Properties;
-import java.io.IOException;
-
 
 
 

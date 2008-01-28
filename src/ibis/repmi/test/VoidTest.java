@@ -1,20 +1,13 @@
 package ibis.repmi.test;
 
-import java.io.IOException;
-
-
-import ibis.ipl.Ibis;
-import ibis.ipl.IbisException;
-import ibis.ipl.PortType;
-import ibis.ipl.ReceivePort;
-import ibis.ipl.Registry;
-import ibis.ipl.SendPort;
-import ibis.ipl.StaticProperties;
+import ibis.ipl.*;
 import ibis.repmi.comm.RepMIUpcall;
 import ibis.repmi.protocol.LTMProtocol;
 import ibis.repmi.protocol.LTVector;
 import ibis.repmi.protocol.MyResizeHandler;
 import ibis.repmi.protocol.ProcessIdentifier;
+
+import java.io.IOException;
 
 public class VoidTest {
 	Registry rgstry;
@@ -57,24 +50,49 @@ public class VoidTest {
 	}       
 
 	public void run() {
-
+		
+		/*
 		StaticProperties props = new StaticProperties();
 		props.add("communication",
 				"OneToOne, OneToMany, ManyToOne, " +
 				"FifoOrdered, Reliable, AutoUpcalls, ExplicitReceipt");
 		props.add("serialization", "object");
 		props.add("worldmodel", "open");
-
+		*/	
+		
 		localLTM = new LTVector();
 		proto = new LTMProtocol(localLTM);
 
-		// Create an Ibis
+		// Create an Ibis		
+		// define capabilities
+		IbisCapabilities capabilities =
+            new IbisCapabilities(IbisCapabilities.MEMBERSHIP_TOTALLY_ORDERED,
+            		IbisCapabilities.CLOSED_WORLD);
+		
+		// define resize handler
 		mrh = new MyResizeHandler(localLTM);
+		
+		// define port types		
+		PortType pType = new PortType(new String[] 
+		      { PortType.SERIALIZATION_OBJECT,
+                PortType.CONNECTION_ONE_TO_MANY,
+                PortType.COMMUNICATION_FIFO,
+                PortType.COMMUNICATION_RELIABLE,
+                PortType.RECEIVE_AUTO_UPCALLS,
+                PortType.RECEIVE_EXPLICIT});
+		
+		PortType explicitReceivePT = new PortType(new String[]
+		      { PortType.SERIALIZATION_OBJECT,
+				PortType.CONNECTION_ONE_TO_MANY,
+				PortType.COMMUNICATION_FIFO,
+                PortType.COMMUNICATION_RELIABLE,
+                PortType.RECEIVE_EXPLICIT});	
+		
 		try {        	
-			ibis = Ibis.createIbis(props, mrh);       
-
-		} catch (IbisException e) {
-			System.err.println("Could not create Ibis: " + e);
+			ibis = IbisFactory.createIbis(capabilities, mrh, 
+					new PortType[] {pType, explicitReceivePT});
+		} catch (IbisCreationFailedException icfe) {
+			System.err.println("Could not create Ibis: " + icfe);
 			failure = true;
 			return;
 		}
@@ -84,38 +102,15 @@ public class VoidTest {
 		mrh.setRegistry(rgstry);       
 		mrh.setMyself(ibis);
 
-		proto.setIbis(ibis);
-
-		// Create properties for the upcall port type
-		StaticProperties portprops = new StaticProperties();
-		portprops.add("communication",
-		"OneToMany, FifoOrdered, Reliable, AutoUpcalls, ExplicitReceipt");
-		portprops.add("serialization", "object");
-
-		//create properties for explicit receipt port type
-		StaticProperties explportprops = new StaticProperties();
-		explportprops.add("communication",
-		"OneToMany, FifoOrdered, Reliable, ExplicitReceipt");
-		explportprops.add("serialization", "object");
-		PortType explPType = null;
-		
-		// Create the port type
-		try {
-			ptype = ibis.createPortType("RepMI port", portprops);
-			explPType = ibis.createPortType("RepMI explicit receipt", explportprops);
-		} catch (Exception e) {
-			System.err.println("Could not create port type: " + e);
-			failure = true;
-			return;
-		}
+		proto.setIbis(ibis);		
 
 		SendPort serverSender = null;
 		SendPort joinAckSP = null;
 		SendPort explicitSP = null;
 		try {
-			serverSender = ptype.createSendPort();
-			joinAckSP = ptype.createSendPort();
-			explicitSP = explPType.createSendPort();
+			serverSender = ibis.createSendPort(ptype);
+			joinAckSP = ibis.createSendPort(ptype);
+			explicitSP = ibis.createSendPort(explicitReceivePT);
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -130,10 +125,12 @@ public class VoidTest {
 //		Create an upcall handler
 		repmiUpcall = new RepMIUpcall(proto);
 		try {
-			serverReceiver = ptype.createReceivePort("repmi-contact-" + ibis.identifier().name(),
+			serverReceiver = ibis.createReceivePort(ptype,
+					"repmi-contact-" + ibis.identifier().name(),
 					repmiUpcall);
 			serverReceiver.enableConnections();
-			explicitReceiver = explPType.createReceivePort("repmi-adm-" + ibis.identifier().name());
+			explicitReceiver = ibis.createReceivePort(explicitReceivePT,
+					"repmi-adm-" + ibis.identifier().name());
 			explicitReceiver.enableConnections();
 			
 		} catch (IOException e1) {
@@ -154,7 +151,7 @@ public class VoidTest {
 
 		mrh.setProtocol(proto);
 
-		ibis.enableResizeUpcalls();
+		rgstry.enableEvents();
 
 		localLTM.waitForInit();
 
@@ -171,7 +168,7 @@ public class VoidTest {
 		/*added temporarily, until rpis can be found without nameserver in the loop*/
 		proto.setIbisReceivePort(explicitReceiver);
 		
-		serverReceiver.enableUpcalls();
+		serverReceiver.enableMessageUpcalls();
 		proto.enableRPUpcalls();
 
 		/*
@@ -186,5 +183,13 @@ public class VoidTest {
 		proto.setReplicatedObject(ra);
 		
 		proto.waitForAllToJoin(NCPUS-1);
+		
+		int size = ibis.registry().getPoolSize();
+
+        System.err.println("pool size = " + size);
+        
+        ibis.registry().waitUntilPoolClosed();
+
+        System.err.println("pool closed");
 	}
 }

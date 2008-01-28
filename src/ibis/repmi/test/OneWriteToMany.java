@@ -1,7 +1,5 @@
 package ibis.repmi.test;
 
-
-import ibis.mpj.*;
 import ibis.repmi.protocol.ReplicatedMethod;
 
 public class OneWriteToMany extends VoidTest {
@@ -19,15 +17,9 @@ public class OneWriteToMany extends VoidTest {
 		Object[] args = new Object[1];
 		args[0] = new Integer(10);	                      
 
-		try {
-
-			System.setProperty("ibis.name_server.key","mpj_barrier");
-			System.setProperty("ibis.pool.total_hosts", NCPUS + 1 + "");
-			MPJ.init(new String[] {"mpj.localcopyIbis"});
-			MPJ.COMM_WORLD.barrier();
-
+				
 			if((pLWA == 0) && 
-					(ibis.identifier().cluster().compareTo(this.writerCluster) == 0)) {
+				ibis.identifier().location().getLevel(0).contains(this.writerCluster) ) {
 
 				long start = System.currentTimeMillis();
 
@@ -41,7 +33,7 @@ public class OneWriteToMany extends VoidTest {
 					}
 				}
 
-				MPJ.COMM_WORLD.barrier();
+//				MPJ.COMM_WORLD.barrier();
 				long end = System.currentTimeMillis();
 				System.out.println("Time per operation (lops): " + (double)(end-start)/NOPS);
 
@@ -49,15 +41,22 @@ public class OneWriteToMany extends VoidTest {
 			} else {
 				long start = System.currentTimeMillis();
 				while(proto.getRops() < NOPS) {;}
-				MPJ.COMM_WORLD.barrier();
+	//			MPJ.COMM_WORLD.barrier();
 				long end = System.currentTimeMillis();
 				System.out.println("Time per operation: (rops)" + (double)(end-start)/NOPS);
 			}
-			MPJ.finish();
+	//		MPJ.finish();
 			proto.processLeave();
-		} catch(MPJException mpje) {
-			mpje.printStackTrace();
-		}
+			try {           			
+				Long result = (Long) proto.processLocalRead(new ReplicatedMethod(
+										"readVal", (Class[]) null, null));
+				System.out.println("Final result = " + result);
+			} catch (SecurityException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			//System.setProperty("ibis.name_server.key",originalIbisNameServerKey);
+			proto.processLeave();
 	}
 }
 

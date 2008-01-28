@@ -1,8 +1,5 @@
 package ibis.repmi.test;
 
-
-import ibis.mpj.MPJ;
-import ibis.mpj.MPJException;
 import ibis.repmi.protocol.ReplicatedMethod;
 
 
@@ -16,13 +13,8 @@ public class TwoWritersToMany  extends VoidTest {
 	public void run() {
 
 		super.run();
-		
 
-		try {
-			
-			System.setProperty("ibis.name_server.key","mpj_barrier");			
-			MPJ.init(new String[] {"mpj.localcopyIbis"});
-			MPJ.COMM_WORLD.barrier();
+		System.setProperty("ibis.name_server.key","mpj_barrier");			
 
 
 			if((pLWA == 1) || (pLWA == 0)) {
@@ -49,7 +41,6 @@ public class TwoWritersToMany  extends VoidTest {
 
 				while(proto.getRops() < NOPS) {;}
 
-				MPJ.COMM_WORLD.barrier();
 				long end = System.currentTimeMillis();
 				System.out.println("Time per operation (lops + rops): " + (double)(end-start)/(2*NOPS));
 
@@ -86,14 +77,11 @@ public class TwoWritersToMany  extends VoidTest {
 				else {
 				long start = System.currentTimeMillis();
 				while(proto.getRops() < 2*NOPS) {;}
-				MPJ.COMM_WORLD.barrier();
+
 				long end = System.currentTimeMillis();
 				System.out.println("Time per operation: (rops)" + (double)(end-start)/(2*NOPS));
 			}
-			MPJ.finish();
-		} catch(MPJException mpje) {
-			mpje.printStackTrace();
-		}
+
 		try {           			
 			Long result = (Long) proto.processLocalRead(new ReplicatedMethod(
 									"readVal", (Class[]) null, null));

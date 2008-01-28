@@ -75,7 +75,7 @@ public class VoidTest {
 		// define port types		
 		ptype = new PortType(new String[] 
 		      { PortType.SERIALIZATION_OBJECT,
-                PortType.CONNECTION_ONE_TO_MANY,
+                PortType.CONNECTION_MANY_TO_MANY,
                 PortType.COMMUNICATION_FIFO,
                 PortType.COMMUNICATION_RELIABLE,
                 PortType.RECEIVE_AUTO_UPCALLS,

@@ -73,7 +73,7 @@ public class VoidTest {
 		mrh = new MyResizeHandler(localLTM);
 		
 		// define port types		
-		PortType pType = new PortType(new String[] 
+		ptype = new PortType(new String[] 
 		      { PortType.SERIALIZATION_OBJECT,
                 PortType.CONNECTION_ONE_TO_MANY,
                 PortType.COMMUNICATION_FIFO,
@@ -90,7 +90,7 @@ public class VoidTest {
 		
 		try {        	
 			ibis = IbisFactory.createIbis(capabilities, mrh, 
-					new PortType[] {pType, explicitReceivePT});
+					new PortType[] {ptype, explicitReceivePT});
 		} catch (IbisCreationFailedException icfe) {
 			System.err.println("Could not create Ibis: " + icfe);
 			failure = true;

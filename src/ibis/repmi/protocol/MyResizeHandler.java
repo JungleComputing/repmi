@@ -127,7 +127,9 @@ public class MyResizeHandler implements RegistryEventHandler {
 						myself.createReceivePort(ptype, "join" + myself.identifier().name(), new JoinUpcall());
 					receiver.enableConnections();
 					
-										
+							
+					
+					
 					if(serverSender != null) {
 						client = serverSender.connect(contact,"repmi-contact-" + contact.name());
 						WriteMessage w = serverSender.newMessage();

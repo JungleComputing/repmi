@@ -1,9 +1,10 @@
 package ibis.repmi.commTest;
+import ibis.repmi.comm.RepMIMessage;
+import ibis.repmi.protocol.LTVector;
+import ibis.repmi.protocol.Operation;
+
 import java.io.Serializable;
 
-import ftrepmi.comm.RepMIMessage;
-import ftrepmi.protocol.LTVector;
-import ftrepmi.protocol.Operation;
 
 
 public class DummyMessage implements RepMIMessage, Serializable {

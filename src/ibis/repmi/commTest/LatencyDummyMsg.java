@@ -3,12 +3,12 @@ package ibis.repmi.commTest;
 
 
 import ibis.ipl.*;
+import ibis.repmi.comm.*;
+import ibis.repmi.protocol.LTVector;
 
 import java.util.Properties;
 import java.io.IOException;
 
-import ftrepmi.comm.*;
-import ftrepmi.protocol.LTVector;
 
 class LatencyDummyMsg {
 

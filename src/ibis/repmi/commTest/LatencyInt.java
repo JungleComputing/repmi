@@ -3,15 +3,15 @@ package ibis.repmi.commTest;
 
 
 import ibis.ipl.*;
+import ibis.repmi.comm.*;
+import ibis.repmi.protocol.LTVector;
+import ibis.repmi.protocol.Operation;
+import ibis.repmi.protocol.ProcessIdentifier;
+import ibis.repmi.protocol.ReplicatedMethod;
 
 import java.util.Properties;
 import java.io.IOException;
 
-import ftrepmi.comm.*;
-import ftrepmi.protocol.LTVector;
-import ftrepmi.protocol.Operation;
-import ftrepmi.protocol.ProcessIdentifier;
-import ftrepmi.protocol.ReplicatedMethod;
 
 
 

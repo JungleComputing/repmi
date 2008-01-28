@@ -2,8 +2,8 @@ package ibis.repmi.commTest;
 import java.io.Serializable;
 
 import ibis.ipl.ReceivePortIdentifier;
-import ftrepmi.protocol.ProcessIdentifier;
-import ftrepmi.protocol.ReplicatedMethod;
+import ibis.repmi.protocol.ProcessIdentifier;
+import ibis.repmi.protocol.ReplicatedMethod;
 
 
 public class DummyOperation implements Serializable{

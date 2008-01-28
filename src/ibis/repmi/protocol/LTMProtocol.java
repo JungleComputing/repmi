@@ -1,0 +1,791 @@
+package ibis.repmi.protocol;
+
+
+import ibis.ipl.Ibis;
+import ibis.ipl.IbisIdentifier;
+import ibis.ipl.PortType;
+import ibis.ipl.ReadMessage;
+import ibis.ipl.ReceivePort;
+import ibis.ipl.ReceivePortIdentifier;
+import ibis.ipl.Registry;
+import ibis.ipl.SendPort;
+import ibis.ipl.WriteMessage;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import ibis.repmi.comm.RepMIAckWelcomeMessage;
+import ibis.repmi.comm.RepMILTMMessage;
+import ibis.repmi.comm.RepMIMessage;
+import ibis.repmi.comm.RepMIUpcall;
+import ibis.repmi.comm.RepMIWelcomeMessage;
+import ibis.util.Timer;
+
+public class LTMProtocol {
+
+	private static final long DELAY = 1000;
+	private static final long PERIOD = 300;
+	public static final long LATENCY = 300;
+	private OpsQueue oq;	
+	private ProcessIdentifier localId;
+	private LTVector localLTM;
+	private SendPort sendPort;
+	private SendPort joinAck;
+	private Registry registry;
+	private Ibis ibis;
+	private Replicateable ro = null;
+	private boolean stop = false;
+	private boolean stopped = false;
+	
+	private byte[] localWriteLock;
+	private byte[] bcastLock;
+	//private HashMap rpi;
+	
+	private RoundManager roundManager;
+	
+	private ExecutionThread executor;
+	
+	private ReceivePortIdentifier ibisRPI;
+	/*a HashMap of remote receivePortIdentifiers*/	
+	private HashMap receivers;
+	/*a HashMap of local receivePortIdentifiers*/
+	private HashMap myReceivers;
+	
+	private ReceivePort ibisRPExplicit;	
+	
+	private PortType ptype;
+	
+	//MEAS
+	private long readVal = 0;
+	private long MAXVAL;
+	private int NCPUS;
+	
+	
+	private long elapsedTime;
+	private long perOperationTime;
+	private Timer timeInBcast = Timer.createTimer();
+	private Timer timeWaitingEndRound  = Timer.createTimer();
+	private Timer timeWaitingStartRound  = Timer.createTimer();
+	public Timer timeInUpcalls = Timer.createTimer();
+	//public Timer timeInJoinUpcalls = Timer.createTimer();
+	//public Timer timeBetweenUpcalls = Timer.createTimer();
+	//public static Timer critical = Timer.createTimer();
+	
+	public LTMProtocol(LTVector ltm) {
+
+		oq = new OpsQueue();
+		//rpi = new HashMap();
+		localLTM = ltm;		
+		localWriteLock = new byte[0];
+		bcastLock = new byte[0];
+		roundManager = new RoundManager(ltm);
+		myReceivers = new HashMap();
+		receivers = new HashMap();
+	}
+
+	public void setProcessIdentifier(ProcessIdentifier localProcessId) {
+		localId = localProcessId;
+		roundManager.setPid(localProcessId);
+	}
+
+	public void setSendPort(SendPort sp) {
+		sendPort = sp;
+	}
+
+	public void setJoinAckSendPort(SendPort joinAckSP) {	
+		joinAck = joinAckSP;
+	}
+
+	public void setRegistry(Registry rg) {
+
+		registry = rg;
+	}
+
+	public void setIbis(Ibis ibis) {
+		// TODO Auto-generated method stub
+		this.ibis = ibis;
+	}
+
+	public void setReplicatedObject(Replicateable ra) {
+
+		if(ro == null)
+			ro = ra;
+	}
+
+	public void setOpsQueue(OpsQueue oq2) {
+
+		oq = oq2;
+
+	}
+
+	public OpsQueue getOpsQueue() {
+
+		return oq;
+	}
+
+	public void setIbisReceivePortIdentifier(ReceivePortIdentifier identifier) {
+		// TODO Auto-generated method stub
+		ibisRPI = identifier;
+	}
+
+	//MEAS
+	public void setMAXVAL(long maxval) {
+
+		MAXVAL = maxval;
+	}
+
+	//MEAS
+	public void setNCPUS(int ncpus) {
+
+		NCPUS = ncpus;
+	}
+
+	//MEAS
+	public boolean testReady() {
+
+		//timeBetweenUpcalls.stop();
+
+		elapsedTime = System.currentTimeMillis() - elapsedTime;
+		//MEAS
+		System.out.println("lops= " + executor.getLops() + 
+				"rops= " + executor.getRops() + 
+				"elapsedTime= " + elapsedTime + " " +
+				"perOperationTime= " + perOperationTime + " " +
+				"perOperationTotalTime= " + ((double)perOperationTime/executor.getLops()) + " \n" +
+				"perBcastTime= " + timeInBcast.averageTime() + " " + 
+				"perStartRoundTime= " + timeWaitingStartRound.averageTime() + " " + 
+				"perEndRoundTime= " + timeWaitingEndRound.averageTime() + " " + 
+				"remoteOperationTotalTime= " + timeInUpcalls.totalTime() + " " + 
+				"perRemoteOperationTime= " + timeInUpcalls.averageTime() + " " +
+				//"perJoinUpcallTime= " + timeInJoinUpcalls.averageTime() + " " +
+				//"totalCriticalTime= " + LTMProtocol.critical.totalTime() + " " +
+				//"perCriticalTime= " + LTMProtocol.critical.averageTime() + " " + 
+				//"timeBetweenUpcallsAvg= " + timeBetweenUpcalls.averageTime()
+				"");
+		return true;
+
+
+	}
+
+	public void start(){
+
+		/*needed to start the internal execution thread of the protocol*/
+
+		//timeBetweenUpcalls.start();
+
+//		DEBUG
+		System.out.println("OpsQueue initial size: " + roundManager.getCurrentQueue().size());
+
+		executor = new ExecutionThread();		
+		roundManager.setExecutor(executor);
+		roundManager.setNoConn(sendPort.connectedTo().length);
+		roundManager.start();
+		
+		elapsedTime = System.currentTimeMillis();
+	}
+
+	public boolean isStopped() {
+		synchronized(ibis) {
+			return stopped;
+		}		
+	}
+
+	public Object processLocalWrite(ReplicatedMethod write) {
+
+		synchronized(localWriteLock) {
+			long start = System.currentTimeMillis();
+			Operation o;
+			synchronized(this){			
+				if(stop) return null;
+			}
+			/*
+				//DEBUG
+				System.out.println("Processing a local write");
+			 */
+
+			o = new Operation(localId, null, write, Operation.LW);
+			//oq.enqueue(o);
+
+			//DEBUG MEAS
+			timeWaitingStartRound.start();
+
+			/*step a*/
+			roundManager.startNewRoundLW(o);
+
+			//DEBUG MEAS
+			timeWaitingStartRound.stop();
+
+
+			//DEBUG MEAS				
+			timeInBcast.start();
+
+			/*step b*/
+			broadcast(new RepMILTMMessage(localLTM, o));
+
+			//DEBUG MEAS
+			timeInBcast.stop();
+
+
+			/*step c & d*/
+			Object result;
+
+			//DEBUG MEAS
+			timeWaitingEndRound.start();
+
+			result = roundManager.waitForEndOfRound();
+
+			//DEBUG MEAS
+			timeWaitingEndRound.stop();
+
+			long end = System.currentTimeMillis();
+			perOperationTime = perOperationTime + (end - start);
+			return result;
+		}
+	}
+
+	public Object processLocalRead(ReplicatedMethod read) {
+
+		/*
+		synchronized(this) {
+			if(stop) return null;
+		}
+		 */
+		/*
+			//DEBUG
+       		System.out.println("Processing a local read");
+		 */
+
+		Object result = null;
+		/*
+				//DEBUG
+				System.out.println("read writeOp with TS: " + ts);
+		 */
+		try {
+			result = ro.getClass().getMethod(read.getName(), read.getParamTypes()).invoke(ro, read.getArgs());
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+
+		return result;				
+	}
+
+
+	public void processJoin(ProcessIdentifier fromId, ReceivePortIdentifier joinAckPort, 
+			ReceivePortIdentifier joiningIbis, ReceivePortIdentifier joinAckNormalNode) {
+
+		synchronized(localWriteLock) {
+			//timeInJoinUpcalls.start();
+			Operation o;
+			synchronized(this) {
+
+				/*if the join comes in while i am in leaving state, i let the requesting node to 
+				 * contact another node after a timeout on the connection*/
+				if(stop) return;
+			}
+
+			//DEBUG
+			System.out.println("Received a join request from " + fromId.getUniqueId());
+
+
+			o = new Operation(fromId, localId, null, Operation.JOIN, 
+					joinAckPort, joiningIbis, joinAckNormalNode);
+
+			
+			roundManager.startNewRoundLW(o);							
+
+			broadcast(new RepMILTMMessage(localLTM, o));
+
+			roundManager.waitForEndOfRound();
+
+			//timeInJoinUpcalls.stop();
+		}		
+	}
+
+	public void processLeave() {
+
+		synchronized(localWriteLock) {
+			Operation o;
+			synchronized(this) {
+
+				stop = true;
+			}	
+
+			o = new Operation(localId, null, Operation.LEAVE);					
+
+			roundManager.startNewRoundLW(o);
+
+			broadcast(new RepMILTMMessage(localLTM, o));
+
+			roundManager.waitForEndOfRound();
+		}
+	}
+
+	public void processRemoteOperation(Operation op, LTVector ltm, ProcessIdentifier fromId, ReadMessage m) {
+
+		//DEBUG MEAS
+		Timer localRO = Timer.createTimer();
+		localRO.start();
+
+		synchronized(this){			
+			if(stop) return;
+			//timeBetweenUpcalls.stop();
+			//timeBetweenUpcalls.start();
+		}
+		Operation nop;
+		if((nop=roundManager.startNewRoundRW(op,m)) != null) {			
+			broadcast(new RepMILTMMessage(localLTM, nop));
+
+			//DEBUG MEAS
+			//LTMProtocol.critical.stop();
+
+			roundManager.waitForEndOfRound();
+		}
+
+		//DEBUG MEAS
+		localRO.stop();
+		synchronized(this) {
+			timeInUpcalls.add(localRO);			
+		}
+	}
+
+
+	public void broadcast(RepMIMessage mesg) {
+		/*
+		//DEBUG
+		System.out.println("starting bcast");
+		 */
+		if(sendPort.connectedTo().length == 0)  {
+			/*
+			//DEBUG
+			System.out.println("exiting bcast - no one else listening");
+			 */
+			return;
+		}
+		/*
+		//DEBUG
+		System.out.println("bcasting to " + sendPort.connectedTo().length + " nodes");
+		 */
+		try {			
+			WriteMessage w = sendPort.newMessage();
+			w.writeObject(mesg);
+			w.finish();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		/*
+		//DEBUG
+		System.out.println("finished bcast");
+		 */
+	}
+
+	public void executeLeave(Operation o) {
+
+		synchronized(bcastLock) {
+
+			/*
+				//DEBUG
+				System.out.println("executing a LEAVE op" + 
+						"; TS: " + o.getTS());
+			 */
+
+			if(o.getPid().compareTo(localId) == 0) {
+
+				synchronized(this) {
+					try {
+
+						//keepAlive.cancel();
+
+						
+						//DEBUG						
+						System.out.println(o.getPid().getUniqueId() + " (this ibis) leaves");
+						
+
+						ReceivePortIdentifier[] rpi = sendPort.connectedTo();
+
+						for(int i=0; i<rpi.length; i ++) {
+							try {
+								sendPort.disconnect(rpi[i]);
+							} catch(IOException ioe) {
+								ioe.printStackTrace();
+							}
+						}
+
+						sendPort.close();
+
+						executor.leave = true;
+
+						synchronized(ibis) {
+							stopped = true;
+							ibis.notify();
+						}
+						//DEBUG
+						System.err.println("Saying goodbye!");
+						ibis.end();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}	
+				}
+			} else {
+
+				try {
+					ReceivePortIdentifier goodbye = null;
+					/*
+						//DEBUG
+						System.out.println(o.getPid().getUniqueId() + " leaves ");
+					 */
+
+
+					localLTM.deleteEntry(o.getPid());		
+
+					ReceivePortIdentifier[] rpi = sendPort.connectedTo();
+
+					for(int i=0; i<rpi.length; i ++) {
+						if(rpi[i].ibisIdentifier().name().compareTo(o.getPid().getUniqueId()) == 0) {
+							goodbye = rpi[i];
+							break;
+						}
+					}
+
+					//goodbye = (ReceivePortIdentifier)rpi.get(o.getPid().getUniqueId());
+					sendPort.disconnect(goodbye);
+					roundManager.setNoConn(sendPort.connectedTo().length);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	
+
+			}
+		}  	
+	}
+
+
+	public void executeJoin(Operation o) {
+
+
+		synchronized(bcastLock) {	
+
+			ReceivePortIdentifier newcomer;
+			ReceivePort dedicatedRp = null;
+
+			//DEBUG
+			System.out.println("executing a JOIN op for " + o.getPid().getUniqueId() + 
+					"; TS: " + o.getTS());					
+
+			if(o.getContact().compareTo(localId) == 0) {
+
+				synchronized(this) {
+					localLTM.addEntry(o.getPid(), localLTM.getEntry(localId));
+					newcomer = o.getJoinPort();
+					try {
+						dedicatedRp = createNewRP(o.getPid().getUniqueId(), ptype);
+						dedicatedRp.enableConnections();
+						dedicatedRp.enableMessageUpcalls();
+
+						joinAck.connect(newcomer);				
+						WriteMessage w = joinAck.newMessage();						
+						w.writeObject(new RepMIWelcomeMessage(localLTM, ro, roundManager.getRoundNo(),
+								roundManager.getRestCurrentQueue(o.getPid()),
+								ibisRPExplicit.identifier(), dedicatedRp.identifier()));
+						w.finish();
+					} catch(IOException e) {						
+						e.printStackTrace();
+					}
+				}
+
+				try {
+					joinAck.disconnect(newcomer);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	
+				/*
+						//DEBUG
+						System.out.println("as contact node");
+				 */
+
+				try {
+					/*added temporarily until rpis can be found without nameserver in the loop*/
+					ReadMessage r = null;
+					r = ibisRPExplicit.receive();
+					RepMIAckWelcomeMessage raw = (RepMIAckWelcomeMessage) r.readObject();
+					r.finish();
+
+					newcomer = raw.rpi;
+					/*end of added temp code*/
+
+					addNewRpi(newcomer);			
+					sendPort.connect(newcomer);
+					roundManager.setNoConn(sendPort.connectedTo().length);
+
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}		
+			} else {
+				//to add sending a message on the join port of the newcomer
+				//containing local operations 
+				//of all process in the system. the newcomer will know who to wait for
+				//using the matrix sent by the contact node.
+				/*
+						//DEBUG
+						System.out.println("as simple node");
+				 */
+
+				localLTM.addEntry(o.getPid(), o.getTS());
+
+				newcomer = o.getJoinNormalNodePort();
+				try {
+					dedicatedRp = createNewRP(o.getPid().getUniqueId(), ptype);
+					dedicatedRp.enableConnections();
+					dedicatedRp.enableMessageUpcalls();
+
+					joinAck.connect(newcomer);
+					WriteMessage w = joinAck.newMessage();
+					w.writeObject(new RepMIWelcomeMessage(localLTM, null, 0, null, 
+							ibisRPExplicit.identifier(), dedicatedRp.identifier()));
+					w.finish();
+
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+				try {
+					joinAck.disconnect(newcomer);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}						
+
+				try {
+
+					/*added temporarily until rpis can be found without nameserver in the loop*/
+					ReadMessage r = null;
+					r = ibisRPExplicit.receive();
+					RepMIAckWelcomeMessage raw = (RepMIAckWelcomeMessage) r.readObject();
+					r.finish();
+
+					newcomer = raw.rpi;
+					/*end of added temp code*/
+
+					addNewRpi(newcomer);
+					sendPort.connect(newcomer);
+					roundManager.setNoConn(sendPort.connectedTo().length);					
+
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}		
+			}
+			bcastLock.notifyAll();
+		}
+	}
+
+
+	class ExecutionThread {
+
+		private Long internalLTS;
+		private OpsQueue internalOQ;
+		private long lops;
+		private long rops;
+		private boolean leave = false;
+
+		ExecutionThread() {			
+			lops = 0;
+			rops = 0;			
+		}
+
+
+		public synchronized long getRops() {
+
+			return rops;
+		}
+
+		public long getLops() {
+
+			return lops;
+		}
+
+		public Object executeAllWrites(OpsQueue queue) {			
+
+			Operation o = null;
+			Iterator it = queue.iterator();
+			Object result = null;
+
+			while(it.hasNext()) {
+
+				o = (Operation)it.next();
+
+				if(o.getType() == Operation.JOIN) {
+
+					executeJoin(o);
+				} else if(o.getType()== Operation.LEAVE) {
+
+					executeLeave(o);
+				} else if(o.getType()== Operation.NOPE) {
+
+
+				} else {
+					/*
+					//DEBUG
+					System.out.println(o.getPid().getUniqueId() + ": " + 
+										o.getTS() + ": " +
+										o.getType() + " (LR=0,LW=1,RW=2) " + 
+										o.getMethod().getName());
+					 */
+					try {
+						if(o.getType() == Operation.LW) {
+							result = ro.getClass().getMethod(o.getMethod().getName(), 
+									o.getMethod().getParamTypes()).invoke(ro, 
+											o.getMethod().getArgs());
+
+							//DEBUG
+							if(result!=null)
+								System.out.println(result.toString());
+
+						} else {
+							ro.getClass().getMethod(o.getMethod().getName(), 
+									o.getMethod().getParamTypes()).invoke(ro, 
+											o.getMethod().getArgs());
+						}
+					} catch (IllegalArgumentException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (SecurityException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (IllegalAccessException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (InvocationTargetException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (NoSuchMethodException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+					/*if of type LW, wake up threads waiting for this operation to be executed*/
+
+					if(o.getType() == Operation.LW)  {
+						synchronized(o) {
+							lops++;
+							o.notifyAll();
+						}
+					} else if(o.getType() == Operation.RW){
+						synchronized(o) {
+							rops++;
+							o.notifyAll();
+						}
+					}
+
+				}
+			}
+			return result;
+		}		
+	}
+
+	//MEAS
+	public void waitForAllToJoin(int ncpus) {
+		// TODO Auto-generated method stub
+		synchronized(bcastLock) {
+			while(sendPort.connectedTo().length < ncpus) {
+				try {
+					bcastLock.wait();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
+		//DEBUG
+		System.out.println("Everyone joined");
+	}
+
+	public void setRoundNo(long round) {
+		// TODO Auto-generated method stub
+		roundManager.setRoundNo(round);
+	}
+
+	public void setCurrentQueue(OpsQueue ops) {
+		// TODO Auto-generated method stub
+		roundManager.setCurrentQueue(ops);
+	}
+
+	public long getRops() {
+		// TODO Auto-generated method stub
+		return executor.getRops();
+	}
+
+	/*added temporarily until rpis can be found without nameserver in the loop*/
+	public void setIbisReceivePort(ReceivePort rpexpl) {
+		// TODO Auto-generated method stub
+		ibisRPExplicit = rpexpl;
+	}
+
+	public ReceivePort createNewRP(IbisIdentifier sender, PortType ptype) {
+		return createNewRP(sender.name(),ptype);
+	}
+
+	public ReceivePort createNewRP(String sender, PortType ptype) {
+		// TODO Auto-generated method stub
+		ReceivePort rp = null;
+		try {
+			rp = ibis.createReceivePort(ptype, "repmi-" + localId.getUniqueId() + 
+					"-" + sender, new RepMIUpcall(this));
+			rp.enableConnections();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		if(rp == null) return null;
+
+		myReceivers.put(rp.identifier().name(), rp);		
+		return rp;
+	}
+
+	public void enableRPUpcalls() {
+		// TODO Auto-generated method stub
+		Iterator it = myReceivers.entrySet().iterator();
+		while(it.hasNext()) {
+			((ReceivePort)((Map.Entry)it.next()).getValue()).enableMessageUpcalls();
+		}
+	}
+
+	public void addNewRpi(ReceivePortIdentifier rpi) {
+		// TODO Auto-generated method stub
+		receivers.put(rpi.name(), rpi);
+	}
+
+	public void setPtype(PortType ptype) {
+		this.ptype = ptype;
+	}	
+}
+

@@ -91,7 +91,7 @@ public class MyResizeHandler implements RegistryEventHandler {
 		
 		rank ++;
 		
-		if(ii.equals(myself)) {
+		if(ii.equals(myself.identifier())) {
 			
 			/*it's my own turn*/
 			

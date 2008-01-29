@@ -220,25 +220,7 @@ public class MyResizeHandler implements RegistryEventHandler {
 	        
 	        IbisIdentifier ii = m.origin().ibisIdentifier();        
 	        
-	        ProcessIdentifier pi = new ProcessIdentifier(ii);
-	        
-	        synchronized(this) {
-	        /*i need to read queues from other processes already in system*/			
-			p2ContactMe.remove(new ProcessIdentifier(ii));
-			
-			// DEBUG
-			System.out.println("Detected ibis " + ii.name() + " already in system "
-					+ "and waiting for information");					
-			System.out.println("ibisses to detect: " + p2ContactMe.size());
-			
-			//proto.getOpsQueue().merge(welcome.oq);
-			//ltm.updateVT(new ProcessIdentifier(myself), welcome.localLTM.getVT(new ProcessIdentifier(ii)));
-			//ltm.update(new ProcessIdentifier(ii), welcome.localLTM); 
-			
-			if(p2ContactMe.size() == 1)  {
-				lastAck = ii;
-			}
-	        }
+	        ProcessIdentifier pi = new ProcessIdentifier(ii);       
 	        
 			try {
 				m.finish();
@@ -269,7 +251,23 @@ public class MyResizeHandler implements RegistryEventHandler {
 			//DEBUG
 			System.out.println("Join request accepted by ibis " + ii.name());
 			
-			
+			synchronized(JoinUpcall.class) {
+		        /*i need to read queues from other processes already in system*/			
+				p2ContactMe.remove(new ProcessIdentifier(ii));
+				
+				// DEBUG
+				System.out.println("Detected ibis " + ii.name() + " already in system "
+						+ "and waiting for information");					
+				System.out.println("ibisses to detect: " + p2ContactMe.size());
+				
+				//proto.getOpsQueue().merge(welcome.oq);
+				//ltm.updateVT(new ProcessIdentifier(myself), welcome.localLTM.getVT(new ProcessIdentifier(ii)));
+				//ltm.update(new ProcessIdentifier(ii), welcome.localLTM); 
+				
+				if(p2ContactMe.size() == 1)  {
+					lastAck = ii;
+				}
+		        }
 			if(lastAck != null)  {
 				/*
 				//DEBUG

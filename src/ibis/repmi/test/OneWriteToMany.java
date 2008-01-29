@@ -46,7 +46,7 @@ public class OneWriteToMany extends VoidTest {
 				System.out.println("Time per operation: (rops)" + (double)(end-start)/NOPS);
 			}
 	//		MPJ.finish();
-			proto.processLeave();
+			
 			try {           			
 				Long result = (Long) proto.processLocalRead(new ReplicatedMethod(
 										"readVal", (Class[]) null, null));

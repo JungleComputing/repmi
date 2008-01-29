@@ -34,8 +34,8 @@ public class LTMProtocol {
 	private ProcessIdentifier localId;
 	private LTVector localLTM;
 	private SendPort sendPort;
-	private SendPort joinAck;
-	private Registry registry;
+	
+	
 	private Ibis ibis;
 	private Replicateable ro = null;
 	private boolean stop = false;
@@ -57,8 +57,21 @@ public class LTMProtocol {
 	
 	private ReceivePort ibisRPExplicit;	
 	
-	private PortType ptype;
+	public static final PortType ptype= new PortType(new String[] 
+	      { PortType.SERIALIZATION_OBJECT,
+            PortType.CONNECTION_MANY_TO_MANY,
+            PortType.COMMUNICATION_FIFO,
+            PortType.COMMUNICATION_RELIABLE,
+            PortType.RECEIVE_AUTO_UPCALLS,
+            PortType.RECEIVE_EXPLICIT});
 	
+	public static final PortType explicitReceivePT = new PortType(new String[]
+          { PortType.SERIALIZATION_OBJECT,
+			PortType.CONNECTION_ONE_TO_MANY,
+			PortType.COMMUNICATION_FIFO,
+			PortType.COMMUNICATION_RELIABLE,
+			PortType.RECEIVE_EXPLICIT});
+
 	//MEAS
 	private long readVal = 0;
 	private long MAXVAL;
@@ -94,15 +107,6 @@ public class LTMProtocol {
 
 	public void setSendPort(SendPort sp) {
 		sendPort = sp;
-	}
-
-	public void setJoinAckSendPort(SendPort joinAckSP) {	
-		joinAck = joinAckSP;
-	}
-
-	public void setRegistry(Registry rg) {
-
-		registry = rg;
 	}
 
 	public void setIbis(Ibis ibis) {
@@ -485,8 +489,8 @@ public class LTMProtocol {
 		synchronized(bcastLock) {	
 
 			ReceivePortIdentifier newcomer;
-			ReceivePort dedicatedRp = null;
-
+			ReceivePort dedicatedRp = null;		
+			
 			//DEBUG
 			System.out.println("executing a JOIN op for " + o.getPid().getUniqueId() + 
 					"; TS: " + o.getTS());					
@@ -496,28 +500,23 @@ public class LTMProtocol {
 				synchronized(this) {
 					localLTM.addEntry(o.getPid(), localLTM.getEntry(localId));
 					newcomer = o.getJoinPort();
-					try {
+					try {						
 						dedicatedRp = createNewRP(o.getPid().getUniqueId(), ptype);
 						dedicatedRp.enableConnections();
 						dedicatedRp.enableMessageUpcalls();
 
-						joinAck.connect(newcomer);				
+						SendPort joinAck = ibis.createSendPort(LTMProtocol.ptype);
+						joinAck.connect(newcomer);							
 						WriteMessage w = joinAck.newMessage();						
 						w.writeObject(new RepMIWelcomeMessage(localLTM, ro, roundManager.getRoundNo(),
 								roundManager.getRestCurrentQueue(o.getPid()),
 								ibisRPExplicit.identifier(), dedicatedRp.identifier()));
 						w.finish();
+						joinAck.close();
 					} catch(IOException e) {						
 						e.printStackTrace();
 					}
-				}
-
-				try {
-					joinAck.disconnect(newcomer);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}	
+				}				
 				/*
 						//DEBUG
 						System.out.println("as contact node");
@@ -561,24 +560,18 @@ public class LTMProtocol {
 					dedicatedRp = createNewRP(o.getPid().getUniqueId(), ptype);
 					dedicatedRp.enableConnections();
 					dedicatedRp.enableMessageUpcalls();
-
+					
+					SendPort joinAck = ibis.createSendPort(LTMProtocol.ptype);
 					joinAck.connect(newcomer);
 					WriteMessage w = joinAck.newMessage();
 					w.writeObject(new RepMIWelcomeMessage(localLTM, null, 0, null, 
 							ibisRPExplicit.identifier(), dedicatedRp.identifier()));
 					w.finish();
-
+					joinAck.close();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}
-
-				try {
-					joinAck.disconnect(newcomer);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}						
+				}										
 
 				try {
 
@@ -783,9 +776,6 @@ public class LTMProtocol {
 		// TODO Auto-generated method stub
 		receivers.put(rpi.name(), rpi);
 	}
-
-	public void setPtype(PortType ptype) {
-		this.ptype = ptype;
-	}	
+	
 }
 

@@ -27,8 +27,7 @@ public class MyResizeHandler implements RegistryEventHandler {
 	LTMProtocol proto;
 	
 	Registry registry;
-	SendPort serverSender;
-	PortType ptype;
+	SendPort serverSender;	
 	ReceivePort receiver;
 		
 	Ibis myself;
@@ -38,7 +37,7 @@ public class MyResizeHandler implements RegistryEventHandler {
 	
 	int rank = 0;
 	private ReceivePortIdentifier ibisRPI;
-	private SendPort explicitSP;	
+		
 		
 	public MyResizeHandler(LTVector ltm) {
 		
@@ -59,12 +58,7 @@ public class MyResizeHandler implements RegistryEventHandler {
 		
 		myself = ib;
 	}
-	
-	public void setPType(PortType p) {
 		
-		ptype = p;
-	}
-	
 	public void setProtocol(LTMProtocol p) {
 		
 		proto = p;
@@ -120,15 +114,13 @@ public class MyResizeHandler implements RegistryEventHandler {
 										+ "and chose it as contact node");					
 					
 					ReceivePort receiverContact = 
-						myself.createReceivePort(ptype, "join-contact" + myself.identifier().name());
+						myself.createReceivePort(LTMProtocol.ptype, "join-contact" + myself.identifier().name());
 					receiverContact.enableConnections();					
 										
 					receiver = 
-						myself.createReceivePort(ptype, "join" + myself.identifier().name(), new JoinUpcall());
+						myself.createReceivePort(LTMProtocol.ptype, "join" + myself.identifier().name(), new JoinUpcall());
 					receiver.enableConnections();
-					
-							
-					
+										
 					
 					if(serverSender != null) {
 						client = serverSender.connect(contact,"repmi-contact-" + contact.name());
@@ -158,12 +150,16 @@ public class MyResizeHandler implements RegistryEventHandler {
 											
 						p2ContactMe = welcome.localLTM.keys();
 						
+						//DEBUG 
+						System.out.println("ibisses to contact me: " + p2ContactMe.size());
+						
 						ltm.setLTM(welcome.localLTM);
 						proto.setReplicatedObject(welcome.ro);
 						proto.setRoundNo(welcome.round);
 						proto.setCurrentQueue(welcome.ops);							
 						
-						ReceivePortIdentifier dedicatedRpi = proto.createNewRP(contact,ptype).identifier();
+						ReceivePortIdentifier dedicatedRpi = proto.createNewRP(contact,LTMProtocol.ptype).identifier();
+						SendPort explicitSP = myself.createSendPort(LTMProtocol.explicitReceivePT);
 						
 						explicitSP.connect(welcome.rpi);
 						
@@ -172,9 +168,14 @@ public class MyResizeHandler implements RegistryEventHandler {
 						wRpi.writeObject(new RepMIAckWelcomeMessage(dedicatedRpi));
 						wRpi.finish();
 						
-						explicitSP.disconnect(welcome.rpi);
+						//explicitSP.disconnect(welcome.rpi);
+						explicitSP.close();
 						
 						p2ContactMe.remove(new ProcessIdentifier(contact));					
+						
+						//	DEBUG 
+						System.out.println("ibisses to accept me: " + p2ContactMe.size());
+						
 						
 						proto.addNewRpi(welcome.dedicatedRpi);
 						
@@ -206,35 +207,51 @@ public class MyResizeHandler implements RegistryEventHandler {
 	class JoinUpcall implements MessageUpcall {
 		
 		public void upcall(ReadMessage m) throws IOException {
-	    	
+			
+			SendPort explicitSP = myself.createSendPort(LTMProtocol.explicitReceivePT);
+			IbisIdentifier lastAck = null;
 			RepMIWelcomeMessage welcome;
 			
 	    	try {
 	    		welcome = (RepMIWelcomeMessage)m.readObject();
 	        } catch (ClassNotFoundException e) {
 	            welcome = null;
-	        }
+	        }        
 	        
 	        IbisIdentifier ii = m.origin().ibisIdentifier();        
 	        
 	        ProcessIdentifier pi = new ProcessIdentifier(ii);
 	        
+	        synchronized(this) {
 	        /*i need to read queues from other processes already in system*/			
 			p2ContactMe.remove(new ProcessIdentifier(ii));
 			
-			//DEBUG
+			// DEBUG
 			System.out.println("Detected ibis " + ii.name() + " already in system "
 					+ "and waiting for information");					
+			System.out.println("ibisses to detect: " + p2ContactMe.size());
 			
 			//proto.getOpsQueue().merge(welcome.oq);
 			//ltm.updateVT(new ProcessIdentifier(myself), welcome.localLTM.getVT(new ProcessIdentifier(ii)));
 			//ltm.update(new ProcessIdentifier(ii), welcome.localLTM); 
 			
+			if(p2ContactMe.size() == 1)  {
+				lastAck = ii;
+			}
+	        }
+	        
+			try {
+				m.finish();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();					
+			}
+			
 			if(serverSender != null) {
 				explicitSP.connect(welcome.rpi);
 				
 				ReceivePortIdentifier dedicatedRpi = 
-					proto.createNewRP(ii,ptype).identifier();
+					proto.createNewRP(ii,LTMProtocol.ptype).identifier();
 				
 				/*added temporarily until rpis can be found without nameserver in the loop*/
 				
@@ -242,7 +259,8 @@ public class MyResizeHandler implements RegistryEventHandler {
 				wRpi.writeObject(new RepMIAckWelcomeMessage(dedicatedRpi));
 				wRpi.finish();
 				
-				explicitSP.disconnect(welcome.rpi);
+				//explicitSP.disconnect(welcome.rpi);
+				explicitSP.close();
 				
 				proto.addNewRpi(welcome.dedicatedRpi);				
 				serverSender.connect(welcome.dedicatedRpi);
@@ -251,7 +269,8 @@ public class MyResizeHandler implements RegistryEventHandler {
 			//DEBUG
 			System.out.println("Join request accepted by ibis " + ii.name());
 			
-			if(p2ContactMe.size() == 1)  {
+			
+			if(lastAck != null)  {
 				/*
 				//DEBUG
 				System.out.println("Last process to ack my presence, starting ...");
@@ -263,11 +282,12 @@ public class MyResizeHandler implements RegistryEventHandler {
 	    }
 	}
 
-	public void setExplicitSP(SendPort explicitSP) {
+	/*
+	public void setExplicitSPT(PortType explicitSP) {
 		// TODO Auto-generated method stub
-		this.explicitSP = explicitSP; 
+		//this.explicitSP = explicitSP; 
 	}
-
+*/
 	public void electionResult(String arg0, IbisIdentifier arg1) {
 		// TODO Auto-generated method stub
 		

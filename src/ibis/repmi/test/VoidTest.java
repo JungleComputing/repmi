@@ -12,8 +12,6 @@ import java.io.IOException;
 public class VoidTest {
 	Registry rgstry;
 
-	PortType ptype;
-
 	LTVector localLTM;
 
 	LTMProtocol proto;	
@@ -27,7 +25,7 @@ public class VoidTest {
 	protected int NCPUS;
 
 	protected String writerCluster;
-
+	
 	Ibis ibis;        
 	MyResizeHandler mrh;
 
@@ -71,26 +69,10 @@ public class VoidTest {
 		
 		// define resize handler
 		mrh = new MyResizeHandler(localLTM);
-		
-		// define port types		
-		ptype = new PortType(new String[] 
-		      { PortType.SERIALIZATION_OBJECT,
-                PortType.CONNECTION_MANY_TO_MANY,
-                PortType.COMMUNICATION_FIFO,
-                PortType.COMMUNICATION_RELIABLE,
-                PortType.RECEIVE_AUTO_UPCALLS,
-                PortType.RECEIVE_EXPLICIT});
-		
-		PortType explicitReceivePT = new PortType(new String[]
-		      { PortType.SERIALIZATION_OBJECT,
-				PortType.CONNECTION_ONE_TO_MANY,
-				PortType.COMMUNICATION_FIFO,
-                PortType.COMMUNICATION_RELIABLE,
-                PortType.RECEIVE_EXPLICIT});	
-		
+				
 		try {        	
 			ibis = IbisFactory.createIbis(capabilities, mrh, 
-					new PortType[] {ptype, explicitReceivePT});
+					new PortType[] {LTMProtocol.ptype, LTMProtocol.explicitReceivePT});
 		} catch (IbisCreationFailedException icfe) {
 			System.err.println("Could not create Ibis: " + icfe);
 			failure = true;
@@ -104,13 +86,10 @@ public class VoidTest {
 
 		proto.setIbis(ibis);		
 
-		SendPort serverSender = null;
-		SendPort joinAckSP = null;
-		SendPort explicitSP = null;
+		SendPort serverSender = null;	
+		
 		try {
-			serverSender = ibis.createSendPort(ptype);
-			joinAckSP = ibis.createSendPort(ptype);
-			explicitSP = ibis.createSendPort(explicitReceivePT);
+			serverSender = ibis.createSendPort(LTMProtocol.ptype);			
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -125,11 +104,11 @@ public class VoidTest {
 //		Create an upcall handler
 		repmiUpcall = new RepMIUpcall(proto);
 		try {
-			serverReceiver = ibis.createReceivePort(ptype,
+			serverReceiver = ibis.createReceivePort(LTMProtocol.ptype,
 					"repmi-contact-" + ibis.identifier().name(),
 					repmiUpcall);
 			serverReceiver.enableConnections();
-			explicitReceiver = ibis.createReceivePort(explicitReceivePT,
+			explicitReceiver = ibis.createReceivePort(LTMProtocol.explicitReceivePT,
 					"repmi-adm-" + ibis.identifier().name());
 			explicitReceiver.enableConnections();
 			
@@ -140,14 +119,12 @@ public class VoidTest {
 
 		mrh.setIbisRPI(serverReceiver.identifier());
 		mrh.setServerSender(serverSender);
-		mrh.setExplicitSP(explicitSP);
-		mrh.setPType(ptype);		
-
+		
+		
 		proto.setProcessIdentifier(new ProcessIdentifier(ibis.identifier()));
-		proto.setSendPort(serverSender);
-		proto.setJoinAckSendPort(joinAckSP);
-		proto.setRegistry(rgstry);
-		proto.setPtype(ptype);
+		proto.setSendPort(serverSender);		
+		//proto.setRegistry(rgstry);
+		
 
 		mrh.setProtocol(proto);
 
@@ -182,8 +159,6 @@ public class VoidTest {
 		ReplicatedAccount ra = new ReplicatedAccount();
 		proto.setReplicatedObject(ra);
 		
-		proto.waitForAllToJoin(NCPUS-1);
-		
 		int size = ibis.registry().getPoolSize();
 
         System.err.println("pool size = " + size);
@@ -191,5 +166,9 @@ public class VoidTest {
         ibis.registry().waitUntilPoolClosed();
 
         System.err.println("pool closed");
+		
+		proto.waitForAllToJoin(NCPUS-1);
+		
+		
 	}
 }

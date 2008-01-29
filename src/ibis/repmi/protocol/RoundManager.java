@@ -55,6 +55,11 @@ public class RoundManager {
 
 	public synchronized void startNewRoundLW(Operation op) {
 
+		// DEBUG
+		if(op.getType() == Operation.LEAVE)		
+			System.err.println("This Ibis " + op.getPid() + " wants to leave at TS=" + TS
+					+ " current round = " + roundNo);
+
 		if(currentQueue.size() == 0) {
 			op.setTS(TS); 
 			localVT.updateTS(localId,op.getTS().longValue());
@@ -100,6 +105,11 @@ public class RoundManager {
 
 	public synchronized Operation startNewRoundRW(Operation op, ReadMessage m) {
 
+		//	DEBUG
+		if(op.getType() == Operation.LEAVE)		
+		System.err.println("Ibis " + op.getPid() + " wants to leave at TS=" + TS
+				+ " current round = " + roundNo);
+		
 		if(currentQueue.size() == 0) {
 			if(op.getTS().longValue() != TS) {
 				System.err.println("OUCH!!!!! round = " + roundNo);
@@ -188,10 +198,10 @@ public class RoundManager {
 
 	public Object waitForEndOfRound() {
 
-		/*
-//		DEBUG
-		System.out.println("waiting to finish round: " + currentRound);
-		 */
+	
+		//	DEBUG
+		System.out.println("waiting to finish round: " + roundNo);
+		
 		synchronized(endRLock) {
 			while(currentQueue.size() != expectedNo) {
 				try {

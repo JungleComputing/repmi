@@ -1,14 +1,6 @@
 package ibis.repmi.protocol;
 
-import ibis.ipl.Ibis;
-import ibis.ipl.IbisIdentifier;
-import ibis.ipl.PortType;
-import ibis.ipl.ReadMessage;
-import ibis.ipl.ReceivePort;
-import ibis.ipl.ReceivePortIdentifier;
-import ibis.ipl.Registry;
-import ibis.ipl.SendPort;
-import ibis.ipl.WriteMessage;
+import ibis.ipl.*;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -25,10 +17,6 @@ import ibis.repmi.comm.RepMIWelcomeMessage;
 import ibis.util.Timer;
 
 public class LTMProtocol {
-
-    private static final long DELAY = 1000;
-
-    private static final long PERIOD = 300;
 
     public static final long LATENCY = 300;
 
@@ -55,8 +43,6 @@ public class LTMProtocol {
     private RoundManager roundManager;
 
     private ExecutionThread executor;
-
-    private ReceivePortIdentifier ibisRPI;
 
     /* a HashMap of remote receivePortIdentifiers */
     private HashMap receivers;
@@ -141,12 +127,7 @@ public class LTMProtocol {
 
         return oq;
     }
-
-    public void setIbisReceivePortIdentifier(ReceivePortIdentifier identifier) {
-        // TODO Auto-generated method stub
-        ibisRPI = identifier;
-    }
-
+  
     // MEAS
     public void setMAXVAL(long maxval) {
 
@@ -503,8 +484,7 @@ public class LTMProtocol {
                     localLTM.addEntry(o.getPid(), localLTM.getEntry(localId));
                     newcomer = o.getJoinPort();
                     try {
-                        dedicatedRp = createNewRP(o.getPid().getUniqueId(),
-                                ptype);
+                        dedicatedRp = createNewRP(o.getPid().getUniqueId());
                         dedicatedRp.enableConnections();
                         dedicatedRp.enableMessageUpcalls();
 
@@ -566,7 +546,7 @@ public class LTMProtocol {
 
                 newcomer = o.getJoinNormalNodePort();
                 try {
-                    dedicatedRp = createNewRP(o.getPid().getUniqueId(), ptype);
+                    dedicatedRp = createNewRP(o.getPid().getUniqueId());
                     dedicatedRp.enableConnections();
                     dedicatedRp.enableMessageUpcalls();
 
@@ -760,11 +740,7 @@ public class LTMProtocol {
         ibisRPExplicit = rpexpl;
     }
 
-    public ReceivePort createNewRP(IbisIdentifier sender, PortType ptype) {
-        return createNewRP(sender.name(), ptype);
-    }
-
-    public ReceivePort createNewRP(String sender, PortType ptype) {
+    public ReceivePort createNewRP(String sender) {
         // TODO Auto-generated method stub
         ReceivePort rp = null;
         try {
@@ -794,6 +770,13 @@ public class LTMProtocol {
     public void addNewRpi(ReceivePortIdentifier rpi) {
         // TODO Auto-generated method stub
         receivers.put(rpi.name(), rpi);
+    }
+
+    public void setIbisReceivePortIdentifier(ReceivePortIdentifier identifier) {
+        // TODO Auto-generated method stub
+        /* when Many-to-Many is really used, a single receive port will be used for comm
+        with the rest of the "world". => ibisRPI = identifier 
+        */
     }
 
 }

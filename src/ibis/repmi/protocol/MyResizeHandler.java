@@ -3,18 +3,8 @@ package ibis.repmi.protocol;
 import java.io.IOException;
 import java.util.Set;
 
-import ibis.ipl.Ibis;
-import ibis.ipl.PortType;
-import ibis.ipl.ReadMessage;
-import ibis.ipl.ReceivePort;
-import ibis.ipl.ReceivePortIdentifier;
-import ibis.ipl.ReceiveTimedOutException;
-import ibis.ipl.Registry;
-import ibis.ipl.RegistryEventHandler;
-import ibis.ipl.IbisIdentifier;
-import ibis.ipl.SendPort;
-import ibis.ipl.MessageUpcall;
-import ibis.ipl.WriteMessage;
+import ibis.ipl.*;
+
 import ibis.repmi.comm.RepMIAckWelcomeMessage;
 import ibis.repmi.comm.RepMIJoinMessage;
 import ibis.repmi.comm.RepMIWelcomeMessage;
@@ -166,7 +156,7 @@ public class MyResizeHandler implements RegistryEventHandler {
                         proto.setCurrentQueue(welcome.ops);
 
                         ReceivePortIdentifier dedicatedRpi = proto.createNewRP(
-                                contact, LTMProtocol.ptype).identifier();
+                                contact.name()).identifier();
                         SendPort explicitSP = myself
                                 .createSendPort(LTMProtocol.explicitReceivePT);
 
@@ -246,8 +236,8 @@ public class MyResizeHandler implements RegistryEventHandler {
             if (serverSender != null) {
                 explicitSP.connect(welcome.rpi);
 
-                ReceivePortIdentifier dedicatedRpi = proto.createNewRP(ii,
-                        LTMProtocol.ptype).identifier();
+                ReceivePortIdentifier dedicatedRpi = proto.createNewRP(
+                        ii.name()).identifier();
 
                 /*
                  * added temporarily until rpis can be found without nameserver
@@ -270,7 +260,7 @@ public class MyResizeHandler implements RegistryEventHandler {
 
             synchronized (JoinUpcall.class) {
                 /* i need to read queues from other processes already in system */
-                p2ContactMe.remove(new ProcessIdentifier(ii));
+                p2ContactMe.remove(pi);
 
                 // DEBUG
                 System.out

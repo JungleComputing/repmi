@@ -136,7 +136,8 @@ public class VoidTest {
          * ProcessIdentifier(ibis.identifier())) + " ... moving on");
          */
 
-        proto.setIbisReceivePortIdentifier(serverReceiver.identifier());
+        // for when Many-to-Many is really used
+        proto.setIbisReceivePortIdentifier(serverReceiver.identifier()); 
 
         /*
          * added temporarily, until rpis can be found without nameserver in the

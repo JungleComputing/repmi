@@ -200,7 +200,7 @@ public class RoundManager {
 
 	
 		//	DEBUG
-		System.out.println("waiting to finish round: " + roundNo);
+		//System.out.println("waiting to finish round: " + roundNo);
 		
 		synchronized(endRLock) {
 			while(currentQueue.size() != expectedNo) {
@@ -229,7 +229,7 @@ public class RoundManager {
 			TS = 1 - TS;
 			
 //			DEBUG
-			System.out.println("finished round: " + roundNo);
+			//System.out.println("finished round: " + roundNo);
 			
 			roundNo ++;
 			

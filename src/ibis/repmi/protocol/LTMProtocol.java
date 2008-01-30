@@ -425,6 +425,10 @@ public class LTMProtocol {
                         // DEBUG
                         System.err.println("Saying goodbye!");
                         ibis.end();
+                        
+                        System.err.println("Ibis statistics:");
+                        ibis.printManagementProperties(System.err);
+                        
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();

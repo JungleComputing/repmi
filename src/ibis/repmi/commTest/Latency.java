@@ -241,6 +241,8 @@ class Latency {
                 rports[i].close();
 
             ibis.end();
+            
+            ibis.printManagementProperties(System.err);
 
         } catch (IOException e) {
             System.out.println("Got exception " + e);

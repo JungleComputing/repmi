@@ -17,7 +17,7 @@ public class RoundManager {
 	private LTVector localVT;
 	
 	private OpsQueue currentQueue;	/*ordered by Pid*/	
-	private OpsQueue nextQueue;		/*ordered by Pid*/
+	private OpsQueue nextQueue;	/*ordered by Pid*/
 	private OpsQueue cacheQueue; 	/*ordered by Pid*/
 	
 	/*internals*/	

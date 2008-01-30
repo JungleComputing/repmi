@@ -4,8 +4,8 @@ import ibis.repmi.protocol.Replicateable;
 
 public interface ReplicatedAspInterface extends Replicateable {
 
-	public Integer myRow();
-	
-	public void sendMyRow(Integer myRow, int[] theRow);	
-	 
+    public Integer myRow();
+
+    public void sendMyRow(Integer myRow, int[] theRow);
+
 }

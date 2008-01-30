@@ -11,7 +11,6 @@ import ibis.repmi.protocol.ReplicatedMethod;
 
 import java.io.IOException;
 
-
 class Latency {
 
     static Ibis ibis;
@@ -33,34 +32,36 @@ class Latency {
             // int size = info.size();
             // int remoteRank = (rank == 0 ? 1 : 0);
 
-            IbisCapabilities capabilities =
-                new IbisCapabilities(IbisCapabilities.CLOSED_WORLD,
-                        IbisCapabilities.MEMBERSHIP_TOTALLY_ORDERED);
+            IbisCapabilities capabilities = new IbisCapabilities(
+                    IbisCapabilities.CLOSED_WORLD,
+                    IbisCapabilities.MEMBERSHIP_TOTALLY_ORDERED);
 
-            PortType portType =
-                new PortType(new String[] { PortType.SERIALIZATION_OBJECT,
-                        PortType.CONNECTION_ONE_TO_MANY,
-                        PortType.COMMUNICATION_RELIABLE ,PortType.RECEIVE_EXPLICIT, PortType.RECEIVE_POLL});
+            PortType portType = new PortType(new String[] {
+                    PortType.SERIALIZATION_OBJECT,
+                    PortType.CONNECTION_ONE_TO_MANY,
+                    PortType.COMMUNICATION_RELIABLE, PortType.RECEIVE_EXPLICIT,
+                    PortType.RECEIVE_POLL });
 
             System.err.println("creating ibis");
-            
+
             ibis = IbisFactory.createIbis(capabilities, null, portType);
-            
+
             int size = ibis.registry().getPoolSize();
 
             System.err.println("pool size = " + size);
-            
+
             ibis.registry().waitUntilPoolClosed();
 
             System.err.println("pool closed");
-            
-            //list of all ibisses. should have the same size and order everywhere
+
+            // list of all ibisses. should have the same size and order
+            // everywhere
             IbisIdentifier[] ibisses = ibis.registry().joinedIbises();
 
             int rank = -1;
             for (int i = 0; i < ibisses.length; i++) {
                 if (ibisses[i].equals(ibis.identifier())) {
-                    //he! this is me :)
+                    // he! this is me :)
                     rank = i;
                     break;
                 }
@@ -70,42 +71,38 @@ class Latency {
                 ibis.end();
                 System.exit(1);
             }
-            
+
             System.err.println("rank = " + rank);
 
-
-            //what's this? -Niels
+            // what's this? -Niels
             int remoteRank = (rank == 0 ? 1 : 0);
 
             ReceivePort rports[] = new ReceivePort[size - 1];
             SendPort sport = ibis.createSendPort(portType);
-            
+
             int tags[] = new int[size - 1];
 
             LTVector ltv = new LTVector();
-            Operation op =
-                new Operation(new ProcessIdentifier(ibis.identifier()),
-                        new Long(0), new ReplicatedMethod("bla",
-                                new Class[] { Integer.class },
-                                new Object[] { new Integer(10) }), remoteRank);
+            Operation op = new Operation(new ProcessIdentifier(ibis
+                    .identifier()), new Long(0), new ReplicatedMethod("bla",
+                    new Class[] { Integer.class }, new Object[] { new Integer(
+                            10) }), remoteRank);
 
             for (int i = 0, j = 0; i < size - 1; i++, j++) {
 
                 if (j == rank)
                     j++;
-                rports[i] =
-                    ibis.createReceivePort(portType, "receive port for " + j);
+                rports[i] = ibis.createReceivePort(portType,
+                        "receive port for " + j);
                 rports[i].enableConnections();
                 tags[i] = 0;
             }
-            
-
 
             long noBytes = 0;
 
             System.setProperty("ibis.name_server.key", "mpj_barrier");
-//            MPJ.init(new String[] { "mpj.localcopyIbis" });
-//            MPJ.COMM_WORLD.barrier();
+            // MPJ.init(new String[] { "mpj.localcopyIbis" });
+            // MPJ.COMM_WORLD.barrier();
 
             long start;
 
@@ -118,16 +115,19 @@ class Latency {
                     if (j == rank)
                         j++;
 
-                    System.err.println(rank + "*******  connect to " + ibisses[j]);
+                    System.err.println(rank + "*******  connect to "
+                            + ibisses[j]);
 
-                    ReceivePortIdentifier id = sport.connect(ibisses[j], "receive port for " + rank);
-                    
-                    ltv.addEntry(new ProcessIdentifier(id.ibisIdentifier()), new Long(0));
+                    ReceivePortIdentifier id = sport.connect(ibisses[j],
+                            "receive port for " + rank);
+
+                    ltv.addEntry(new ProcessIdentifier(id.ibisIdentifier()),
+                            new Long(0));
                 }
 
                 System.err.println(rank + "*******  connect done ");
 
-//                MPJ.COMM_WORLD.barrier();
+                // MPJ.COMM_WORLD.barrier();
 
                 WriteMessage w;
                 ReadMessage r;
@@ -150,8 +150,8 @@ class Latency {
                                 if (r != null) {
                                     counter++;
                                     tags[k]++;
-                                    RepMILTMMessage res =
-                                        (RepMILTMMessage) r.readObject();
+                                    RepMILTMMessage res = (RepMILTMMessage) r
+                                            .readObject();
                                     noBytes += r.finish();
                                 }
                             }
@@ -172,11 +172,14 @@ class Latency {
 
                 for (int j = 0; j < size; j++) {
 
-                    System.err.println(rank + "*******  connect to " + ibisses[j]);
-                    
-                    ReceivePortIdentifier id = sport.connect(ibisses[j], "receive port for " + rank);
-                    
-                    ltv.addEntry(new ProcessIdentifier(id.ibisIdentifier()), new Long(0));
+                    System.err.println(rank + "*******  connect to "
+                            + ibisses[j]);
+
+                    ReceivePortIdentifier id = sport.connect(ibisses[j],
+                            "receive port for " + rank);
+
+                    ltv.addEntry(new ProcessIdentifier(id.ibisIdentifier()),
+                            new Long(0));
 
                     if (j + 1 == rank)
                         j++;
@@ -184,7 +187,7 @@ class Latency {
 
                 System.err.println(rank + "*******  connect done ");
 
-//                MPJ.COMM_WORLD.barrier();
+                // MPJ.COMM_WORLD.barrier();
 
                 ReadMessage r;
                 WriteMessage w;
@@ -232,7 +235,7 @@ class Latency {
                 sport.close();
             }
 
-//            MPJ.finish();
+            // MPJ.finish();
 
             for (int i = 0; i < size - 1; i++)
                 rports[i].close();
@@ -247,10 +250,10 @@ class Latency {
             System.out.println("Got exception " + e);
             System.out.println("StackTrace:");
             e.printStackTrace();
-//        } catch (MPJException mpje) {
-//            System.out.println("Got exception " + mpje);
-//            System.out.println("StackTrace:");
-//            mpje.printStackTrace();
+            // } catch (MPJException mpje) {
+            // System.out.println("Got exception " + mpje);
+            // System.out.println("StackTrace:");
+            // mpje.printStackTrace();
         } catch (ClassNotFoundException e) {
             System.out.println("Got exception " + e);
             System.out.println("StackTrace:");

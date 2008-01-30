@@ -2,8 +2,6 @@ package ibis.repmi.comm;
 
 import java.io.IOException;
 
-
-
 import ibis.ipl.IbisIdentifier;
 import ibis.ipl.ReadMessage;
 import ibis.ipl.ReceivePort;
@@ -16,60 +14,64 @@ import ibis.repmi.protocol.ProcessIdentifier;
 
 public class RepMIUpcall implements MessageUpcall {
 
-	LTMProtocol proto;
-	Object mesg;
+    LTMProtocol proto;
 
-	public RepMIUpcall(LTMProtocol proto) {
+    Object mesg;
 
-		this.proto = proto;
-	}
+    public RepMIUpcall(LTMProtocol proto) {
 
-	public void upcall(ReadMessage m) {
+        this.proto = proto;
+    }
 
-		try {
-			mesg = m.readObject();
-		} catch (ClassNotFoundException e) {
-			mesg = null;
-		} catch (IOException e) {
-			mesg = null;
-			e.printStackTrace();
-		}
+    public void upcall(ReadMessage m) {
 
-		IbisIdentifier ii = m.origin().ibisIdentifier();        
+        try {
+            mesg = m.readObject();
+        } catch (ClassNotFoundException e) {
+            mesg = null;
+        } catch (IOException e) {
+            mesg = null;
+            e.printStackTrace();
+        }
 
-		if(mesg != null) {
-			ProcessIdentifier pi = new ProcessIdentifier(ii);
-			if(mesg instanceof RepMILTMMessage) {
+        IbisIdentifier ii = m.origin().ibisIdentifier();
 
-				if(((RepMILTMMessage)mesg).arg.getType() == Operation.LW)    
-					((RepMILTMMessage)mesg).arg.setType(Operation.RW);
+        if (mesg != null) {
+            ProcessIdentifier pi = new ProcessIdentifier(ii);
+            if (mesg instanceof RepMILTMMessage) {
 
-				/*i might not do communication, so i delay the call to m.finish*/
-				proto.processRemoteOperation(((RepMILTMMessage)mesg).arg, 
-						((RepMILTMMessage)mesg).localLTM, pi,
-						m);
-				return;    		       		
+                if (((RepMILTMMessage) mesg).arg.getType() == Operation.LW)
+                    ((RepMILTMMessage) mesg).arg.setType(Operation.RW);
 
-			} else if(mesg instanceof RepMIJoinMessage) {
+                /* i might not do communication, so i delay the call to m.finish */
+                proto.processRemoteOperation(((RepMILTMMessage) mesg).arg,
+                        ((RepMILTMMessage) mesg).localLTM, pi, m);
+                return;
 
-				/*needs to be called to release the thread before entering the processJoin call which 
-				 * will broadcast the join request to all other processes in the system*/
-				ReceivePortIdentifier joinAckPort = ((RepMIJoinMessage)mesg).recvPortId; 
-				ReceivePortIdentifier joiningIbisPort = ((RepMIJoinMessage)mesg).ibisRPI;
-				ReceivePortIdentifier joinAckNormalNode = ((RepMIJoinMessage)mesg).joinAckNormalNode;
+            } else if (mesg instanceof RepMIJoinMessage) {
 
-				try {
-					m.finish();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();					
-				}
+                /*
+                 * needs to be called to release the thread before entering the
+                 * processJoin call which will broadcast the join request to all
+                 * other processes in the system
+                 */
+                ReceivePortIdentifier joinAckPort = ((RepMIJoinMessage) mesg).recvPortId;
+                ReceivePortIdentifier joiningIbisPort = ((RepMIJoinMessage) mesg).ibisRPI;
+                ReceivePortIdentifier joinAckNormalNode = ((RepMIJoinMessage) mesg).joinAckNormalNode;
 
-				proto.processJoin(pi, joinAckPort, joiningIbisPort, joinAckNormalNode);
+                try {
+                    m.finish();
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
 
-				return;
+                proto.processJoin(pi, joinAckPort, joiningIbisPort,
+                        joinAckNormalNode);
 
-			}        
-		}
-	}
+                return;
+
+            }
+        }
+    }
 }

@@ -6,298 +6,299 @@ import ibis.repmi.protocol.LTMProtocol.ExecutionThread;
 import java.io.IOException;
 import java.util.Iterator;
 
-
 public class RoundManager {
 
-	private long TS;
-	
-	
-	private ProcessIdentifier localId;
-	
-	private LTVector localVT;
-	
-	private OpsQueue currentQueue;	/*ordered by Pid*/	
-	private OpsQueue nextQueue;	/*ordered by Pid*/
-	private OpsQueue cacheQueue; 	/*ordered by Pid*/
-	
-	/*internals*/	
-		
-	private int expectedNo = 0;
-	private byte[] endRLock;
-	
-	private ExecutionThread executor;
-	
-	private boolean lwtookover = false;
-		
-	//MEAS & DEBUG
-	private int roundNo = 1; //first round -> roundNo = 1
+    private long TS;
 
-	public RoundManager(LTVector ltv) {
+    private ProcessIdentifier localId;
 
-		TS = 0;
-		
-		localVT = ltv;
-		currentQueue = new OpsQueue();
-		nextQueue = new OpsQueue();
-		cacheQueue = new OpsQueue();
-		endRLock = new byte[0];
-	}
+    private LTVector localVT;
 
-	public void setPid(ProcessIdentifier lid) {
+    private OpsQueue currentQueue; /* ordered by Pid */
 
-		localId = lid;
-	}
+    private OpsQueue nextQueue; /* ordered by Pid */
 
-	public void setExecutor(ExecutionThread exe) {
+    private OpsQueue cacheQueue; /* ordered by Pid */
 
-		executor = exe;
-	}
+    /* internals */
 
-	public synchronized void startNewRoundLW(Operation op) {
+    private int expectedNo = 0;
 
-		// DEBUG
-		if(op.getType() == Operation.LEAVE)		
-			System.err.println("This Ibis " + op.getPid() + " wants to leave at TS=" + TS
-					+ " current round = " + roundNo);
+    private byte[] endRLock;
 
-		if(currentQueue.size() == 0) {
-			op.setTS(TS); 
-			localVT.updateTS(localId,op.getTS().longValue());
-			currentQueue.enqueue(op);			
-		} else {			
-			/*		
-//			DEBUG
-			System.out.println("waiting to start new round LW, current round is:" + currentRound);
-			 */	
-			if(nextQueue.size() == 0) {
-				op.setTS(1-TS);
-				nextQueue.enqueue(op);
-				while(op.getTS().longValue() != TS) {
-					try {
-						wait();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				localVT.updateTS(localId,op.getTS().longValue());	
-			} else {
-				op.setTS(1-TS);
-				nextQueue.enqueue(op);
-				lwtookover  = true;
-				while(op.getTS().longValue() != TS) {
-					try {
-						wait();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				localVT.updateTS(localId,op.getTS().longValue());
-			}		
-		}
-		/*
-//		DEBUG
-		System.out.println("new round LW started: " + currentRound);
-		 */
-		return;
-	}
+    private ExecutionThread executor;
 
-	public synchronized Operation startNewRoundRW(Operation op, ReadMessage m) {
+    private boolean lwtookover = false;
 
-		//	DEBUG
-		if(op.getType() == Operation.LEAVE)		
-		System.err.println("Ibis " + op.getPid() + " wants to leave at TS=" + TS
-				+ " current round = " + roundNo);
-		
-		if(currentQueue.size() == 0) {
-			if(op.getTS().longValue() != TS) {
-				System.err.println("OUCH!!!!! round = " + roundNo);
-				return null;
-			}
-			try {
-				m.finish();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block 
-				e.printStackTrace();
-			}
-			
-			Operation ol = new Operation(localId, null, Operation.NOPE);
-			ol.setTS(TS);
-			localVT.updateTS(localId,TS);
-			
-			currentQueue.enqueue(op);
-			currentQueue.enqueue(ol);
-			return ol;
-		} else {
-			if(op.getTS().longValue() == TS) {
-				if(op.getType() != Operation.JOIN) {
-					localVT.updateTS(op.getPid(),op.getTS().longValue());
-				} else {
-					localVT.updateTS(op.getContact(),op.getTS().longValue());
-				}
-				currentQueue.enqueue(op);
-				synchronized(endRLock) {				
-					if(currentQueue.size() == expectedNo) endRLock.notifyAll();
-				}
-				return null;
-			} else {
-				if(nextQueue.size() != 0) {
-					nextQueue.enqueue(op);
-					return null;
-				} else {
-					try {
-						m.finish();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block 
-						e.printStackTrace();
-					}
-					nextQueue.enqueue(op);
-					while((op.getTS().longValue() != TS) && (lwtookover != true)) {
-						try {
-							wait();
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
-					if(lwtookover) {
-						lwtookover = false;
-						return null;
-					} else {
-						Operation ol = new Operation(localId, null, Operation.NOPE);
-						ol.setTS(TS);
-						localVT.updateTS(localId,TS);
-								
-						currentQueue.enqueue(ol);
-						return ol;
-					}
-				}
-			}
-		}
-	}		
+    // MEAS & DEBUG
+    private int roundNo = 1; // first round -> roundNo = 1
 
-	public void processNextQueue() {
+    public RoundManager(LTVector ltv) {
 
-		if(nextQueue.size() == 0) {			
-			return;
-		}
+        TS = 0;
 
-		Operation op;
-		
-		while((op=nextQueue.dequeue()) != null) {
-			
-			if(op.getType() != Operation.JOIN) {
-				localVT.updateTS(op.getPid(),op.getTS().longValue());
-			} else {
-				localVT.updateTS(op.getContact(),op.getTS().longValue());
-			}
-			currentQueue.enqueue(op);			 
-		}		
-	}
+        localVT = ltv;
+        currentQueue = new OpsQueue();
+        nextQueue = new OpsQueue();
+        cacheQueue = new OpsQueue();
+        endRLock = new byte[0];
+    }
 
-	public Object waitForEndOfRound() {
+    public void setPid(ProcessIdentifier lid) {
 
-	
-		//	DEBUG
-		//System.out.println("waiting to finish round: " + roundNo);
-		
-		synchronized(endRLock) {
-			while(currentQueue.size() != expectedNo) {
-				try {
-					endRLock.wait();
+        localId = lid;
+    }
 
-					/*woke up by timeout*/
-					/*
-				if(replies != expectedNo) {
-					faultRecovery();
-				}
-					 */
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-		
-		synchronized(this) {
-			Object result;
-			result = executor.executeAllWrites(currentQueue);
-			
-			currentQueue.move(cacheQueue);
-			processNextQueue();
-			TS = 1 - TS;
-			
-//			DEBUG
-			//System.out.println("finished round: " + roundNo);
-			
-			roundNo ++;
-			
-			notifyAll();
-			return result;
-		}
-	}
+    public void setExecutor(ExecutionThread exe) {
 
-	public void setNoConn(int expNo) {
+        executor = exe;
+    }
 
-		synchronized(endRLock){
-			expectedNo = expNo + 1;
-			endRLock.notifyAll();
-		}
-	}
+    public synchronized void startNewRoundLW(Operation op) {
 
-	public synchronized void setRoundNo(long roundSn) {
+        // DEBUG
+        if (op.getType() == Operation.LEAVE)
+            System.err.println("This Ibis " + op.getPid()
+                    + " wants to leave at TS=" + TS + " current round = "
+                    + roundNo);
 
-		TS = roundSn;	
+        if (currentQueue.size() == 0) {
+            op.setTS(TS);
+            localVT.updateTS(localId, op.getTS().longValue());
+            currentQueue.enqueue(op);
+        } else {
+            /*
+             * // DEBUG System.out.println("waiting to start new round LW,
+             * current round is:" + currentRound);
+             */
+            if (nextQueue.size() == 0) {
+                op.setTS(1 - TS);
+                nextQueue.enqueue(op);
+                while (op.getTS().longValue() != TS) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+                localVT.updateTS(localId, op.getTS().longValue());
+            } else {
+                op.setTS(1 - TS);
+                nextQueue.enqueue(op);
+                lwtookover = true;
+                while (op.getTS().longValue() != TS) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+                localVT.updateTS(localId, op.getTS().longValue());
+            }
+        }
+        /*
+         * // DEBUG System.out.println("new round LW started: " + currentRound);
+         */
+        return;
+    }
 
-	}
+    public synchronized Operation startNewRoundRW(Operation op, ReadMessage m) {
 
-	public synchronized long getRoundNo() {
+        // DEBUG
+        if (op.getType() == Operation.LEAVE)
+            System.err.println("Ibis " + op.getPid() + " wants to leave at TS="
+                    + TS + " current round = " + roundNo);
 
-		return TS;
-	}
+        if (currentQueue.size() == 0) {
+            if (op.getTS().longValue() != TS) {
+                System.err.println("OUCH!!!!! round = " + roundNo);
+                return null;
+            }
+            try {
+                m.finish();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
 
-	public void faultRecovery() {
-		return;
-	}
+            Operation ol = new Operation(localId, null, Operation.NOPE);
+            ol.setTS(TS);
+            localVT.updateTS(localId, TS);
 
-	public OpsQueue getRestCurrentQueue(ProcessIdentifier pid) {
+            currentQueue.enqueue(op);
+            currentQueue.enqueue(ol);
+            return ol;
+        } else {
+            if (op.getTS().longValue() == TS) {
+                if (op.getType() != Operation.JOIN) {
+                    localVT.updateTS(op.getPid(), op.getTS().longValue());
+                } else {
+                    localVT.updateTS(op.getContact(), op.getTS().longValue());
+                }
+                currentQueue.enqueue(op);
+                synchronized (endRLock) {
+                    if (currentQueue.size() == expectedNo)
+                        endRLock.notifyAll();
+                }
+                return null;
+            } else {
+                if (nextQueue.size() != 0) {
+                    nextQueue.enqueue(op);
+                    return null;
+                } else {
+                    try {
+                        m.finish();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    nextQueue.enqueue(op);
+                    while ((op.getTS().longValue() != TS)
+                            && (lwtookover != true)) {
+                        try {
+                            wait();
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                    }
+                    if (lwtookover) {
+                        lwtookover = false;
+                        return null;
+                    } else {
+                        Operation ol = new Operation(localId, null,
+                                Operation.NOPE);
+                        ol.setTS(TS);
+                        localVT.updateTS(localId, TS);
 
-		OpsQueue res = new OpsQueue();
+                        currentQueue.enqueue(ol);
+                        return ol;
+                    }
+                }
+            }
+        }
+    }
 
-		Iterator it = currentQueue.iterator();
-		Operation op;
+    public void processNextQueue() {
 
-		while(it.hasNext()) {
-			op = (Operation)it.next();
-			if(op.getPid().compareTo(pid) > 0) {
-				res.enqueue(op);
-			}			
-		}
+        if (nextQueue.size() == 0) {
+            return;
+        }
 
-		return res;
-	}
+        Operation op;
 
-	public synchronized void setCurrentQueue(OpsQueue ops) {
+        while ((op = nextQueue.dequeue()) != null) {
 
-		currentQueue = ops;		
-	}
+            if (op.getType() != Operation.JOIN) {
+                localVT.updateTS(op.getPid(), op.getTS().longValue());
+            } else {
+                localVT.updateTS(op.getContact(), op.getTS().longValue());
+            }
+            currentQueue.enqueue(op);
+        }
+    }
 
-	public synchronized void start() {
-		
-		executor.executeAllWrites(currentQueue);
+    public Object waitForEndOfRound() {
 
-		currentQueue.move(cacheQueue);
-		processNextQueue();
-		TS = 1 - TS;
-		
-//		DEBUG
-		System.out.println("finished round: " + roundNo);
-		roundNo ++;				
-	}
+        // DEBUG
+        // System.out.println("waiting to finish round: " + roundNo);
 
-	public synchronized OpsQueue getCurrentQueue() {
+        synchronized (endRLock) {
+            while (currentQueue.size() != expectedNo) {
+                try {
+                    endRLock.wait();
 
-		return currentQueue;
-	}
+                    /* woke up by timeout */
+                    /*
+                     * if(replies != expectedNo) { faultRecovery(); }
+                     */
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        synchronized (this) {
+            Object result;
+            result = executor.executeAllWrites(currentQueue);
+
+            currentQueue.move(cacheQueue);
+            processNextQueue();
+            TS = 1 - TS;
+
+            // DEBUG
+            // System.out.println("finished round: " + roundNo);
+
+            roundNo++;
+
+            notifyAll();
+            return result;
+        }
+    }
+
+    public void setNoConn(int expNo) {
+
+        synchronized (endRLock) {
+            expectedNo = expNo + 1;
+            endRLock.notifyAll();
+        }
+    }
+
+    public synchronized void setRoundNo(long roundSn) {
+
+        TS = roundSn;
+
+    }
+
+    public synchronized long getRoundNo() {
+
+        return TS;
+    }
+
+    public void faultRecovery() {
+        return;
+    }
+
+    public OpsQueue getRestCurrentQueue(ProcessIdentifier pid) {
+
+        OpsQueue res = new OpsQueue();
+
+        Iterator it = currentQueue.iterator();
+        Operation op;
+
+        while (it.hasNext()) {
+            op = (Operation) it.next();
+            if (op.getPid().compareTo(pid) > 0) {
+                res.enqueue(op);
+            }
+        }
+
+        return res;
+    }
+
+    public synchronized void setCurrentQueue(OpsQueue ops) {
+
+        currentQueue = ops;
+    }
+
+    public synchronized void start() {
+
+        executor.executeAllWrites(currentQueue);
+
+        currentQueue.move(cacheQueue);
+        processNextQueue();
+        TS = 1 - TS;
+
+        // DEBUG
+        System.out.println("finished round: " + roundNo);
+        roundNo++;
+    }
+
+    public synchronized OpsQueue getCurrentQueue() {
+
+        return currentQueue;
+    }
 }

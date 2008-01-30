@@ -127,7 +127,7 @@ public class LTMProtocol {
 
         return oq;
     }
-  
+
     // MEAS
     public void setMAXVAL(long maxval) {
 
@@ -432,37 +432,37 @@ public class LTMProtocol {
                 }
             } else {
 
-                try {
-                    ReceivePortIdentifier goodbye = null;
+                ReceivePortIdentifier goodbye = null;
 
-                    // DEBUG
-                    System.out.println(o.getPid().getUniqueId() + " leaves ");
+                // DEBUG
+                System.out.println(o.getPid().getUniqueId() + " leaves ");
 
-                    localLTM.deleteEntry(o.getPid());
+                localLTM.deleteEntry(o.getPid());
 
-                    ReceivePortIdentifier[] rpi = sendPort.connectedTo();
+                ReceivePortIdentifier[] rpi = sendPort.connectedTo();
 
-                    for (int i = 0; i < rpi.length; i++) {
-                        if (rpi[i].ibisIdentifier().name().equals(
-                                o.getPid().getUniqueId())) {
-                            goodbye = rpi[i];
-                            break;
-                        }
+                for (int i = 0; i < rpi.length; i++) {
+                    if (rpi[i].ibisIdentifier().name().equals(
+                            o.getPid().getUniqueId())) {
+                        goodbye = rpi[i];
+                        break;
                     }
+                }
 
-                    // goodbye =
-                    // (ReceivePortIdentifier)rpi.get(o.getPid().getUniqueId());
+                // goodbye =
+                // (ReceivePortIdentifier)rpi.get(o.getPid().getUniqueId());
+
+                try {
                     if (goodbye != null)
                         sendPort.disconnect(goodbye);
-                    // DEBUG
-                    System.err.println("Disconnecting from "
-                            + o.getPid().getUniqueId());
-                    roundManager.setNoConn(sendPort.connectedTo().length);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
-
+                // DEBUG
+                System.err.println("Disconnecting from "
+                        + o.getPid().getUniqueId());
+                roundManager.setNoConn(sendPort.connectedTo().length);
             }
         }
     }
@@ -774,9 +774,10 @@ public class LTMProtocol {
 
     public void setIbisReceivePortIdentifier(ReceivePortIdentifier identifier) {
         // TODO Auto-generated method stub
-        /* when Many-to-Many is really used, a single receive port will be used for comm
-        with the rest of the "world". => ibisRPI = identifier 
-        */
+        /*
+         * when Many-to-Many is really used, a single receive port will be used
+         * for comm with the rest of the "world". => ibisRPI = identifier
+         */
     }
 
 }

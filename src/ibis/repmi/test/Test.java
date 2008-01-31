@@ -7,6 +7,8 @@ public class Test {
 
     static final int TWO_WRITERS_2_CLUSTERS = 2;
 
+    static final int NO_TEST = 3;
+
     public static void main(String[] args) {
         // TODO Auto-generated method stub
         VoidTest test = null;
@@ -14,8 +16,13 @@ public class Test {
         int cpuId = Integer.parseInt(args[2]);
         int ncpus = Integer.parseInt(args[3]);
         String writerCluster = args[4];
-        
-        switch (Integer.parseInt(args[0])) {
+        int testType;
+        if ((args == null) || (args.length == 0))
+            testType = NO_TEST;
+        else
+            testType = Integer.parseInt(args[0]);
+
+        switch (testType) {
         case ONE_WRITER:
             test = new OneWriteToMany(nops, cpuId, 0, ncpus, writerCluster);
             break;
@@ -30,8 +37,9 @@ public class Test {
             System.out.println("Usage: Test test_type params");
             System.out.println("\t test_type = 0 => ONE_WRITER");
             System.out.println("\t test_type = 1 => TWO_WRITERS_1_CLUSTER");
-            System.out.println("\t test_type = 2 => TWO_WRITERS_2_CLUSTERS");    
-            System.out.println("\t params = No_operations cpuId No_cpus [writer's cluster]");            
+            System.out.println("\t test_type = 2 => TWO_WRITERS_2_CLUSTERS");
+            System.out
+                    .println("\t params = No_operations cpuId No_cpus [writer's cluster]");
             System.exit(0);
         }
 

@@ -15,7 +15,7 @@ public class Test {
         long nops = Long.parseLong(args[1]);
         int cpuId = Integer.parseInt(args[2]);
         int ncpus = Integer.parseInt(args[3]);
-        String writerCluster = args[4];
+        
         int testType;
         if ((args == null) || (args.length == 0))
             testType = NO_TEST;
@@ -24,7 +24,7 @@ public class Test {
 
         switch (testType) {
         case ONE_WRITER:
-            test = new OneWriteToMany(nops, cpuId, 0, ncpus, writerCluster);
+            test = new OneWriteToMany(nops, cpuId, 0, ncpus, args[4]);
             break;
         case TWO_WRITERS_1_CLUSTER:
             test = new TwoWritersToMany(nops, cpuId, 0, ncpus);

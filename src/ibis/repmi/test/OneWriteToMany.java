@@ -4,9 +4,13 @@ import ibis.repmi.protocol.ReplicatedMethod;
 
 public class OneWriteToMany extends VoidTest {
 
-    public OneWriteToMany(long nops, int plwa, int plwm, int ncpus, String wC) {
+    protected String writerCluster;
 
-        super(nops, plwa, plwm, ncpus, wC);
+    public OneWriteToMany(long nops, int plwa, int plwm, int ncpus,
+            long timeout, String wC) {
+
+        super(nops, plwa, plwm, ncpus, timeout);
+        writerCluster = wC;
     }
 
     public void run() {

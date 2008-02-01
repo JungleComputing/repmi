@@ -15,7 +15,8 @@ public class Test {
         long nops = Long.parseLong(args[1]);
         int cpuId = Integer.parseInt(args[2]);
         int ncpus = Integer.parseInt(args[3]);
-        
+        long timeout = Long.parseLong(args[4]);
+
         int testType;
         if ((args == null) || (args.length == 0))
             testType = NO_TEST;
@@ -24,13 +25,14 @@ public class Test {
 
         switch (testType) {
         case ONE_WRITER:
-            test = new OneWriteToMany(nops, cpuId, 0, ncpus, args[4]);
+            test = new OneWriteToMany(nops, cpuId, 0, ncpus, timeout, args[5]);
             break;
         case TWO_WRITERS_1_CLUSTER:
-            test = new TwoWritersToMany(nops, cpuId, 0, ncpus);
+            test = new TwoWritersToMany(nops, cpuId, 0, ncpus, timeout);
             break;
         case TWO_WRITERS_2_CLUSTERS:
-            test = new TwoWritersToManyOn2Clusters(nops, cpuId, 0, ncpus);
+            test = new TwoWritersToManyOn2Clusters(nops, cpuId, 0, ncpus,
+                    timeout);
             break;
         default:
             System.out.println("No test selected");
@@ -39,7 +41,7 @@ public class Test {
             System.out.println("\t test_type = 1 => TWO_WRITERS_1_CLUSTER");
             System.out.println("\t test_type = 2 => TWO_WRITERS_2_CLUSTERS");
             System.out
-                    .println("\t params = No_operations cpuId No_cpus [writer's cluster]");
+                    .println("\t params = No_operations cpuId No_cpus timeout [writer's cluster]");
             System.exit(0);
         }
 

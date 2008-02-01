@@ -8,6 +8,8 @@ import java.util.Iterator;
 
 public class RoundManager {
 
+    private long TIMEOUT;
+
     private long TS;
 
     private ProcessIdentifier localId;
@@ -33,10 +35,10 @@ public class RoundManager {
     // MEAS & DEBUG
     private int roundNo = 1; // first round -> roundNo = 1
 
-    public RoundManager(LTVector ltv) {
+    public RoundManager(LTVector ltv, long timeout) {
 
         TS = 0;
-
+        TIMEOUT = timeout;
         localVT = ltv;
         currentQueue = new OpsQueue();
         nextQueue = new OpsQueue();
@@ -208,7 +210,7 @@ public class RoundManager {
         synchronized (endRLock) {
             while (currentQueue.size() != expectedNo) {
                 try {
-                    endRLock.wait();
+                    endRLock.wait(TIMEOUT);
 
                     /* woke up by timeout */
                     /*

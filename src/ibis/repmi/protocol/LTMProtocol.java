@@ -85,14 +85,14 @@ public class LTMProtocol {
     // public Timer timeBetweenUpcalls = Timer.createTimer();
     // public static Timer critical = Timer.createTimer();
 
-    public LTMProtocol(LTVector ltm) {
+    public LTMProtocol(LTVector ltm, long timeout) {
 
         oq = new OpsQueue();
         // rpi = new HashMap();
         localLTM = ltm;
         localWriteLock = new byte[0];
         bcastLock = new byte[0];
-        roundManager = new RoundManager(ltm);
+        roundManager = new RoundManager(ltm, timeout);
         myReceivers = new HashMap();
         receivers = new HashMap();
     }
@@ -457,7 +457,7 @@ public class LTMProtocol {
                 // (ReceivePortIdentifier)rpi.get(o.getPid().getUniqueId());
 
                 try {
-                    if (goodbye != null)
+                    if (goodbye != null)                        
                         sendPort.disconnect(goodbye);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block

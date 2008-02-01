@@ -26,27 +26,19 @@ public class VoidTest {
 
     protected int NCPUS;
 
-    protected String writerCluster;
+    protected long TIMEOUT;
 
     Ibis ibis;
 
     MyResizeHandler mrh;
 
-    public VoidTest(long nops, int plwa, int plwm, int ncpus) {
+    public VoidTest(long nops, int plwa, int plwm, int ncpus, long timeout) {
 
+        TIMEOUT = timeout;
         NOPS = nops;
         pLWA = plwa;
         pLWM = plwm;
         NCPUS = ncpus;
-    }
-
-    public VoidTest(long nops, int plwa, int plwm, int ncpus, String wC) {
-
-        NOPS = nops;
-        NCPUS = ncpus;
-        pLWA = plwa;
-        pLWM = plwm;
-        writerCluster = wC;
     }
 
     public void run() {
@@ -60,7 +52,7 @@ public class VoidTest {
          */
 
         localLTM = new LTVector();
-        proto = new LTMProtocol(localLTM);
+        proto = new LTMProtocol(localLTM, TIMEOUT);
 
         // Create an Ibis
         // define capabilities
@@ -137,7 +129,7 @@ public class VoidTest {
          */
 
         // for when Many-to-Many is really used
-        proto.setIbisReceivePortIdentifier(serverReceiver.identifier()); 
+        proto.setIbisReceivePortIdentifier(serverReceiver.identifier());
 
         /*
          * added temporarily, until rpis can be found without nameserver in the

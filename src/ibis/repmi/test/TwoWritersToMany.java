@@ -4,9 +4,10 @@ import ibis.repmi.protocol.ReplicatedMethod;
 
 public class TwoWritersToMany extends VoidTest {
 
-    public TwoWritersToMany(long nops, int plwa, int plwm, int ncpus) {
+    public TwoWritersToMany(long nops, int plwa, int plwm, int ncpus,
+            long timeout) {
 
-        super(nops, plwa, plwm, ncpus);
+        super(nops, plwa, plwm, ncpus, timeout);
     }
 
     public void run() {

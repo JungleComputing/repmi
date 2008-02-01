@@ -4,9 +4,10 @@ import ibis.repmi.protocol.ReplicatedMethod;
 
 public class TwoWritersToManyOn2Clusters extends VoidTest {
 
-    public TwoWritersToManyOn2Clusters(long nops, int plwa, int plwm, int ncpus) {
+    public TwoWritersToManyOn2Clusters(long nops, int plwa, int plwm,
+            int ncpus, long timeout) {
 
-        super(nops, plwa, plwm, ncpus);
+        super(nops, plwa, plwm, ncpus, timeout);
 
     }
 

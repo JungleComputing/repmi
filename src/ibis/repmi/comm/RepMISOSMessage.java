@@ -1,12 +1,14 @@
 package ibis.repmi.comm;
 
-public class RepMISOSMessage implements RepMIMessage {
+import java.io.Serializable;
 
-    public Long recoveryRound;
+public class RepMISOSMessage implements Serializable, RepMIMessage {
 
-    public Long TS;
+    public long recoveryRound;
 
-    public RepMISOSMessage(Long cR, Long ts) {
+    public long TS;
+
+    public RepMISOSMessage(long cR, long ts) {
 
         recoveryRound = cR;
         TS = ts;

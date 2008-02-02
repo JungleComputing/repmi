@@ -71,6 +71,20 @@ public class RepMIUpcall implements MessageUpcall {
 
                 return;
 
+            } else if (mesg instanceof RepMISOSMessage) {
+                try {
+                    m.finish();
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                proto.processSOS(ii, ((RepMISOSMessage) mesg).TS,
+                        ((RepMISOSMessage) mesg).recoveryRound);
+                return;
+
+            } else if (mesg instanceof RepMISOSReplyMessage) {
+                proto.processSOSReply(ii, ((RepMISOSReplyMessage) mesg).whomIHelp, ((RepMISOSReplyMessage) mesg).TS,
+                        ((RepMISOSReplyMessage) mesg).myOps);
             }
         }
     }

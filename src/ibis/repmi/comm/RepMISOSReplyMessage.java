@@ -1,20 +1,26 @@
 package ibis.repmi.comm;
 
-import java.util.List;
+import ibis.repmi.protocol.OpsQueue;
 
-public class RepMISOSReplyMessage implements RepMIMessage {
+import java.io.Serializable;
 
-    public List myOps;
+public class RepMISOSReplyMessage implements Serializable, RepMIMessage {
+
+    public OpsQueue myOps;
 
     public String whomIHelp;
 
-    public Long recoveryRound;
+    public long recoveryRound;
 
-    public RepMISOSReplyMessage(List myOps, String whomIHelp, Long recoveryRound) {
+    public long TS;
 
-        this.myOps = myOps;
+    public RepMISOSReplyMessage(OpsQueue myOps2, String whomIHelp,
+            long recoveryRound, long TS) {
+
+        this.myOps = myOps2;
         this.whomIHelp = whomIHelp;
         this.recoveryRound = recoveryRound;
+        this.TS = TS;
     }
 
 }

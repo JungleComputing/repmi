@@ -56,6 +56,7 @@ public class VoidTest {
 
         // Create an Ibis
         // define capabilities
+        // TODO CLOSED_WORLD is only for tests
         IbisCapabilities capabilities = new IbisCapabilities(
                 IbisCapabilities.MEMBERSHIP_TOTALLY_ORDERED,
                 IbisCapabilities.CLOSED_WORLD);

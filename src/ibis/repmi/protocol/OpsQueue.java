@@ -2,28 +2,30 @@ package ibis.repmi.protocol;
 
 import java.io.Serializable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.TreeSet;
 
 public class OpsQueue implements Serializable {
 
     private TreeSet queue;
 
-    private Operation lastLW;
+    //private Operation lastLW = null;
 
     public OpsQueue() {
 
-        queue = new TreeSet(new OpsComparator());
-        lastLW = null;
+        queue = new TreeSet(new OpsComparator());       
     }
 
     public synchronized void enqueue(Operation op) {
 
         queue.add(op);
+      /*
         if (op.getType() == Operation.LW) {
             // LET OP ! assumption that local writes are implicitely ordered by
             // timestamp
             lastLW = op;
         }
+        */
     }
 
     public synchronized Operation dequeue(Long maxTs) {
@@ -83,7 +85,7 @@ public class OpsQueue implements Serializable {
 
         return destQ.queue.size();
     }
-
+/*
     public synchronized boolean localWritesPending() {
 
         if (lastLW != null)
@@ -95,7 +97,7 @@ public class OpsQueue implements Serializable {
 
         return lastLW;
     }
-
+*/
     public synchronized boolean contains(Operation op) {
 
         if (op == null)
@@ -114,7 +116,8 @@ public class OpsQueue implements Serializable {
 
     public synchronized void merge(OpsQueue oq) {
 
-        Operation op;
+        if(oq == null) return;
+        Operation op;        
         while ((op = oq.dequeue()) != null) {
 
             enqueue(op);
@@ -124,5 +127,17 @@ public class OpsQueue implements Serializable {
     public synchronized int size() {
         // TODO Auto-generated method stub
         return queue.size();
+    }
+
+    public Object[] toList() {
+        // TODO Auto-generated method stub       
+        return queue.toArray();
+    }
+
+    public synchronized OpsQueue copy() {
+        // TODO Auto-generated method stub
+        OpsQueue newOq = new OpsQueue();
+        newOq.queue = (TreeSet)queue.clone();
+        return newOq;
     }
 }

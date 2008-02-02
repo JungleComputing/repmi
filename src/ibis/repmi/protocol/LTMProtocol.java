@@ -7,11 +7,14 @@ import java.lang.reflect.InvocationTargetException;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import ibis.repmi.comm.RepMIAckWelcomeMessage;
 import ibis.repmi.comm.RepMILTMMessage;
 import ibis.repmi.comm.RepMIMessage;
+import ibis.repmi.comm.RepMISOSMessage;
+import ibis.repmi.comm.RepMISOSReplyMessage;
 import ibis.repmi.comm.RepMIUpcall;
 import ibis.repmi.comm.RepMIWelcomeMessage;
 import ibis.util.Timer;
@@ -222,12 +225,23 @@ public class LTMProtocol {
             timeInBcast.stop();
 
             /* step c & d */
-            Object result;
+            Object result = null;
 
             // DEBUG MEAS
             timeWaitingEndRound.start();
 
-            result = roundManager.waitForEndOfRound();
+            try {
+                result = roundManager.waitForEndOfRound();
+            } catch (RoundTimedOutException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                RepMISOSMessage sos;
+                while ((sos = roundManager.startNewRecoveryRound()) != null) {
+                    broadcast(sos);
+                    roundManager.waitForEndOfRecoveryRound();
+                }
+                result = roundManager.endRecoveredRound();
+            }
 
             // DEBUG MEAS
             timeWaitingEndRound.stop();
@@ -302,7 +316,18 @@ public class LTMProtocol {
 
             broadcast(new RepMILTMMessage(localLTM, o));
 
-            roundManager.waitForEndOfRound();
+            try {
+                roundManager.waitForEndOfRound();
+            } catch (RoundTimedOutException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                RepMISOSMessage sos;
+                while ((sos = roundManager.startNewRecoveryRound()) != null) {
+                    broadcast(sos);
+                    roundManager.waitForEndOfRecoveryRound();
+                }
+                roundManager.endRecoveredRound();
+            }
 
             // timeInJoinUpcalls.stop();
         }
@@ -327,7 +352,18 @@ public class LTMProtocol {
 
             broadcast(new RepMILTMMessage(localLTM, o));
 
-            roundManager.waitForEndOfRound();
+            try {
+                roundManager.waitForEndOfRound();
+            } catch (RoundTimedOutException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                RepMISOSMessage sos;
+                while ((sos = roundManager.startNewRecoveryRound()) != null) {
+                    broadcast(sos);
+                    roundManager.waitForEndOfRecoveryRound();
+                }
+                roundManager.endRecoveredRound();
+            }
         }
     }
 
@@ -350,7 +386,18 @@ public class LTMProtocol {
             // DEBUG MEAS
             // LTMProtocol.critical.stop();
 
-            roundManager.waitForEndOfRound();
+            try {
+                roundManager.waitForEndOfRound();
+            } catch (RoundTimedOutException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                RepMISOSMessage sos;
+                while ((sos = roundManager.startNewRecoveryRound()) != null) {
+                    broadcast(sos);
+                    roundManager.waitForEndOfRecoveryRound();
+                }
+                roundManager.endRecoveredRound();
+            }
         }
 
         // DEBUG MEAS
@@ -425,10 +472,10 @@ public class LTMProtocol {
                         // DEBUG
                         System.err.println("Saying goodbye!");
                         ibis.end();
-                        
+
                         System.err.println("Ibis statistics:");
                         ibis.printManagementProperties(System.err);
-                        
+
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -457,7 +504,7 @@ public class LTMProtocol {
                 // (ReceivePortIdentifier)rpi.get(o.getPid().getUniqueId());
 
                 try {
-                    if (goodbye != null)                        
+                    if (goodbye != null)
                         sendPort.disconnect(goodbye);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -650,6 +697,8 @@ public class LTMProtocol {
                      * o.getMethod().getName());
                      */
                     try {
+                        // TODO decide whether a RW should also return this
+                        // result
                         if (o.getType() == Operation.LW) {
                             result = ro.getClass().getMethod(
                                     o.getMethod().getName(),
@@ -720,7 +769,7 @@ public class LTMProtocol {
         }
 
         // DEBUG
-        System.out.println("Everyone joined");
+        System.err.println("Everyone joined");
     }
 
     public void setRoundNo(long round) {
@@ -782,6 +831,25 @@ public class LTMProtocol {
          * when Many-to-Many is really used, a single receive port will be used
          * for comm with the rest of the "world". => ibisRPI = identifier
          */
+    }
+
+    public void processSOS(IbisIdentifier whoAsks, long ts, long recoveryRound) {
+        roundManager.setPrevRoundInTrouble(ts);
+        OpsQueue myOps = roundManager.getOpsQueue(ts);
+        RepMISOSReplyMessage sosreply = new RepMISOSReplyMessage(myOps, whoAsks
+                .name(), recoveryRound, ts);
+        broadcast(sosreply);
+    }
+
+    public void processSOSReply(IbisIdentifier whoAnswered, String whoAsked,
+            long ts, OpsQueue queue) {
+        roundManager.setPrevRoundInTrouble(ts);
+        /* see if it is for me or not */
+        roundManager.processReceivedQueue(queue, ts);
+        
+        if (whoAsked.equals(this.ibis.identifier().name())) {
+            roundManager.receivedSOSReply(whoAnswered);
+        }
     }
 
 }

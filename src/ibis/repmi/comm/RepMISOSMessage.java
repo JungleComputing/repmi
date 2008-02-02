@@ -1,17 +1,15 @@
 package ibis.repmi.comm;
 
-import java.util.List;
-
 public class RepMISOSMessage implements RepMIMessage {
 
-    public Long currentRound;
+    public Long recoveryRound;
 
-    public List missingOp;
+    public Long TS;
 
-    public RepMISOSMessage(Long cR, List missing) {
+    public RepMISOSMessage(Long cR, Long ts) {
 
-        currentRound = cR;
-        missingOp = missing;
+        recoveryRound = cR;
+        TS = ts;
     }
 
 }

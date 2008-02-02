@@ -4,11 +4,17 @@ import java.util.List;
 
 public class RepMISOSReplyMessage implements RepMIMessage {
 
-    public List foundOp;
+    public List myOps;
 
-    public RepMISOSReplyMessage(List fOp) {
+    public String whomIHelp;
 
-        foundOp = fOp;
+    public Long recoveryRound;
+
+    public RepMISOSReplyMessage(List myOps, String whomIHelp, Long recoveryRound) {
+
+        this.myOps = myOps;
+        this.whomIHelp = whomIHelp;
+        this.recoveryRound = recoveryRound;
     }
 
 }

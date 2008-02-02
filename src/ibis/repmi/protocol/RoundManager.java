@@ -211,11 +211,10 @@ public class RoundManager {
             while (currentQueue.size() != expectedNo) {
                 try {
                     endRLock.wait(TIMEOUT);
-
                     /* woke up by timeout */
-                    /*
-                     * if(replies != expectedNo) { faultRecovery(); }
-                     */
+                    
+                    if(currentQueue.size() != expectedNo) { faultRecovery(); }
+                     
                 } catch (InterruptedException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -261,7 +260,10 @@ public class RoundManager {
     }
 
     public void faultRecovery() {
-        return;
+        /*check again i miss ops*/
+        if(currentQueue.size() == expectedNo)
+            return;
+        
     }
 
     public OpsQueue getRestCurrentQueue(ProcessIdentifier pid) {

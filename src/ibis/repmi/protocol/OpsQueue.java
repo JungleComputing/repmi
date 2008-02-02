@@ -121,7 +121,7 @@ public class OpsQueue implements Serializable {
         }
     }
 
-    public int size() {
+    public synchronized int size() {
         // TODO Auto-generated method stub
         return queue.size();
     }

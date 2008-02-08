@@ -234,13 +234,7 @@ public class LTMProtocol {
                 result = roundManager.waitForEndOfRound();
             } catch (RoundTimedOutException e) {
                 // TODO Auto-generated catch block
-                e.printStackTrace();
-                RepMISOSMessage sos;
-                while ((sos = roundManager.startNewRecoveryRound()) != null) {
-                    broadcast(sos);
-                    roundManager.waitForEndOfRecoveryRound();
-                }
-                result = roundManager.endRecoveredRound();
+                result = manageRecovery(e);
             }
 
             // DEBUG MEAS
@@ -319,14 +313,7 @@ public class LTMProtocol {
             try {
                 roundManager.waitForEndOfRound();
             } catch (RoundTimedOutException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                RepMISOSMessage sos;
-                while ((sos = roundManager.startNewRecoveryRound()) != null) {
-                    broadcast(sos);
-                    roundManager.waitForEndOfRecoveryRound();
-                }
-                roundManager.endRecoveredRound();
+                manageRecovery(e);;
             }
 
             // timeInJoinUpcalls.stop();
@@ -355,14 +342,7 @@ public class LTMProtocol {
             try {
                 roundManager.waitForEndOfRound();
             } catch (RoundTimedOutException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                RepMISOSMessage sos;
-                while ((sos = roundManager.startNewRecoveryRound()) != null) {
-                    broadcast(sos);
-                    roundManager.waitForEndOfRecoveryRound();
-                }
-                roundManager.endRecoveredRound();
+                manageRecovery(e);
             }
         }
     }
@@ -384,19 +364,13 @@ public class LTMProtocol {
             broadcast(new RepMILTMMessage(localLTM, nop));
 
             // DEBUG MEAS
+            // System.err.println("sent a NOP to " + op.getPid().getUniqueId());
             // LTMProtocol.critical.stop();
 
             try {
                 roundManager.waitForEndOfRound();
             } catch (RoundTimedOutException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                RepMISOSMessage sos;
-                while ((sos = roundManager.startNewRecoveryRound()) != null) {
-                    broadcast(sos);
-                    roundManager.waitForEndOfRecoveryRound();
-                }
-                roundManager.endRecoveredRound();
+                manageRecovery(e);
             }
         }
 
@@ -408,6 +382,7 @@ public class LTMProtocol {
     }
 
     public void broadcast(RepMIMessage mesg) {
+
         /*
          * //DEBUG System.out.println("starting bcast");
          */
@@ -433,6 +408,7 @@ public class LTMProtocol {
         /*
          * //DEBUG System.out.println("finished bcast");
          */
+
     }
 
     public void executeLeave(Operation o) {
@@ -834,22 +810,47 @@ public class LTMProtocol {
     }
 
     public void processSOS(IbisIdentifier whoAsks, long ts, long recoveryRound) {
+
+        // DEBUG
+        System.err.println(ibis.identifier().name() + ": processing SOS from "
+                + whoAsks.name());
+
         roundManager.setPrevRoundInTrouble(ts);
-        OpsQueue myOps = roundManager.getOpsQueue(ts);
+        // OpsQueue myOps = roundManager.getOpsQueue(ts);
+        Object[] myOps = roundManager.getOpsList(ts);
         RepMISOSReplyMessage sosreply = new RepMISOSReplyMessage(myOps, whoAsks
                 .name(), recoveryRound, ts);
-        broadcast(sosreply);
+        synchronized (bcastLock) {
+            broadcast(sosreply);
+        }
     }
 
     public void processSOSReply(IbisIdentifier whoAnswered, String whoAsked,
-            long ts, OpsQueue queue) {
+            long ts, Object[] objects) {
+
+        // DEBUG
+        System.err.println(ibis.identifier().name()
+                + ": processing SOS Reply from " + whoAnswered.name() + " for "
+                + whoAsked);
+
         roundManager.setPrevRoundInTrouble(ts);
         /* see if it is for me or not */
-        roundManager.processReceivedQueue(queue, ts);
-        
-        if (whoAsked.equals(this.ibis.identifier().name())) {
+        roundManager.processReceivedQueue(objects, ts);
+
+        if (whoAsked.compareTo(this.ibis.identifier().name()) == 0) {
             roundManager.receivedSOSReply(whoAnswered);
         }
     }
 
+    protected Object manageRecovery(RoundTimedOutException e) {
+        e.printStackTrace();
+        RepMISOSMessage sos = roundManager.startNewRecoveryRound();
+        broadcast(sos);
+        while (roundManager.waitForEndOfRecoveryRound()) {
+            sos = roundManager.startNewRecoveryRound();
+            broadcast(sos);
+        }
+        Object result = roundManager.endRecoveredRound();
+        return result;
+    }
 }

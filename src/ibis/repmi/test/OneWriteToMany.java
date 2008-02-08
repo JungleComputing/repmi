@@ -76,7 +76,7 @@ public class OneWriteToMany extends VoidTest {
                 try {
                     ibis.end();
                     /*it should work with the next statement*/
-                    //System.exit(0);
+                    System.exit(0);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();

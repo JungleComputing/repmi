@@ -244,6 +244,7 @@ public class RoundManager {
             Object result;
             result = executor.executeAllWrites(currentQueue);
 
+            cacheQueue.clear();
             currentQueue.move(cacheQueue);
             processNextQueue();
             TS = 1 - TS;
@@ -323,8 +324,9 @@ public class RoundManager {
             return;
         if (isPrevRoundInTrouble()) {
             try {
-                /* wait for the prev round to recover */
-                endRLock.wait(expectedNo * TIMEOUT);
+                /* wait for the prev round to recover put a better decision
+                 * making condition */
+                endRLock.wait(2 * expectedNo * expectedNo * TIMEOUT);
                 resetPrevRoundInTrouble();
             } catch (InterruptedException e) {
                 // TODO Auto-generated catch block
@@ -334,6 +336,10 @@ public class RoundManager {
             /* i am in trouble */
             replied = Collections.synchronizedList(new ArrayList());
             alive = currentQueue.size();
+
+            // DEBUG
+            System.err.println("Round timing out after answered " + alive);
+
             throw new RoundTimedOutException();
         }
     }
@@ -361,50 +367,72 @@ public class RoundManager {
     public RepMISOSMessage startNewRecoveryRound() {
 
         synchronized (recoveryLock) {
-            if ((currentQueue.size() != expectedNo)
-                    && (replied.size() != alive)) {
-                recoveryRound++;
-                alive = replied.size();
-                replied.clear();
-                return new RepMISOSMessage(recoveryRound, TS);
-            } else {
-                recoveryRound = 0;
-                expectedNo = alive;
-                return null;
-            }
+
+            recoveryRound++;
+
+            // DEBUG
+            System.err.println("new recovery round started after answered "
+                    + replied.size() + " out of " + alive);
+            
+            return new RepMISOSMessage(recoveryRound, TS);
+
         }
     }
 
-    public void waitForEndOfRecoveryRound() {
+    public boolean waitForEndOfRecoveryRound() {
         // TODO Auto-generated method stub
         synchronized (recoveryLock) {
             try {
-                recoveryLock.wait(TIMEOUT);
+                recoveryLock.wait(expectedNo * expectedNo * TIMEOUT);
             } catch (InterruptedException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
+
+            // DEBUG
+            System.err.println("finished recovery round: " + recoveryRound
+                    + "; replied = " + replied.size());
+
+            if ((currentQueue.size() != expectedNo)
+                    && (replied.size() != alive)) {
+                alive = replied.size();
+                replied.clear();
+                return true;
+            } else
+                return false;
         }
     }
 
     public synchronized OpsQueue getOpsQueue(long ts) {
-        // TODO Auto-generated method stub
+
         if (TS == ts)
             return currentQueue.copy();
         else
             return cacheQueue.copy();
     }
 
-    public synchronized void processReceivedQueue(OpsQueue queue, long ts) {
+    public synchronized Object[] getOpsList(long ts) {
+
+        if (TS == ts)
+            return currentQueue.toList();
+        else
+            return cacheQueue.toList();
+    }
+
+    public synchronized void processReceivedQueue(Object[] objects, long ts) {
         if (TS == ts) {
-            currentQueue.merge(queue);
+            currentQueue.merge(objects);
         } else
             return;
-
     }
 
     public void receivedSOSReply(IbisIdentifier whoAnswered) {
         synchronized (recoveryLock) {
+
+            // DEBUG
+            System.err.println("Received SOSReply from " + whoAnswered.name());
+            System.err.println("Queue size is now " + currentQueue.size());
+
             replied.add(whoAnswered);
             if (replied.size() == alive)
                 recoveryLock.notifyAll();
@@ -415,12 +443,17 @@ public class RoundManager {
         Object result;
         result = executor.executeAllWrites(currentQueue);
 
+        cacheQueue.clear();
         currentQueue.move(cacheQueue);
         processNextQueue();
         TS = 1 - TS;
 
         // DEBUG
-        // System.out.println("finished round: " + roundNo);
+        System.err.println("finished recovered round: " + roundNo
+                + "; alive = " + alive);
+
+        recoveryRound = 0;
+        expectedNo = alive + 1;
 
         roundNo++;
 

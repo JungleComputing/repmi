@@ -9,23 +9,20 @@ public class OpsQueue implements Serializable {
 
     private TreeSet queue;
 
-    //private Operation lastLW = null;
+    // private Operation lastLW = null;
 
     public OpsQueue() {
 
-        queue = new TreeSet(new OpsComparator());       
+        queue = new TreeSet(new OpsComparator());
     }
 
     public synchronized void enqueue(Operation op) {
 
         queue.add(op);
-      /*
-        if (op.getType() == Operation.LW) {
-            // LET OP ! assumption that local writes are implicitely ordered by
-            // timestamp
-            lastLW = op;
-        }
-        */
+        /*
+         * if (op.getType() == Operation.LW) { // LET OP ! assumption that local
+         * writes are implicitely ordered by // timestamp lastLW = op; }
+         */
     }
 
     public synchronized Operation dequeue(Long maxTs) {
@@ -85,19 +82,21 @@ public class OpsQueue implements Serializable {
 
         return destQ.queue.size();
     }
-/*
-    public synchronized boolean localWritesPending() {
 
-        if (lastLW != null)
-            return true;
-        return false;
+    public synchronized void clear() {
+
+        queue.clear();
     }
 
-    public synchronized Operation getLastLocalWrite() {
-
-        return lastLW;
-    }
-*/
+    /*
+     * public synchronized boolean localWritesPending() {
+     * 
+     * if (lastLW != null) return true; return false; }
+     * 
+     * public synchronized Operation getLastLocalWrite() {
+     * 
+     * return lastLW; }
+     */
     public synchronized boolean contains(Operation op) {
 
         if (op == null)
@@ -116,8 +115,9 @@ public class OpsQueue implements Serializable {
 
     public synchronized void merge(OpsQueue oq) {
 
-        if(oq == null) return;
-        Operation op;        
+        if (oq == null)
+            return;
+        Operation op;
         while ((op = oq.dequeue()) != null) {
 
             enqueue(op);
@@ -130,14 +130,22 @@ public class OpsQueue implements Serializable {
     }
 
     public Object[] toList() {
-        // TODO Auto-generated method stub       
         return queue.toArray();
     }
 
     public synchronized OpsQueue copy() {
         // TODO Auto-generated method stub
         OpsQueue newOq = new OpsQueue();
-        newOq.queue = (TreeSet)queue.clone();
+        newOq.queue = new TreeSet(new OpsComparator());
+        for (Object ob : queue) {
+            newOq.enqueue(new Operation((Operation) ob));
+        }
         return newOq;
+    }
+
+    public void merge(Object[] objects) {
+        for (Object ob : queue) {
+            enqueue((Operation) ob);
+        }
     }
 }

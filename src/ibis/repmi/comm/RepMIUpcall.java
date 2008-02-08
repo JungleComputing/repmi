@@ -25,6 +25,9 @@ public class RepMIUpcall implements MessageUpcall {
 
     public void upcall(ReadMessage m) {
 
+        // DEBUG
+       // System.err.println("Got RepMI upcall from " + m.origin().name());
+
         try {
             mesg = m.readObject();
         } catch (ClassNotFoundException e) {
@@ -32,6 +35,9 @@ public class RepMIUpcall implements MessageUpcall {
         } catch (IOException e) {
             mesg = null;
             e.printStackTrace();
+        } catch (Throwable th) {
+            mesg = null;
+            th.printStackTrace();
         }
 
         IbisIdentifier ii = m.origin().ibisIdentifier();
@@ -40,6 +46,11 @@ public class RepMIUpcall implements MessageUpcall {
             ProcessIdentifier pi = new ProcessIdentifier(ii);
             if (mesg instanceof RepMILTMMessage) {
 
+                // DEBUG
+               /* System.err.println("Got RepMI upcall of type "
+                        + ((RepMILTMMessage) mesg).arg.getType() + " from "
+                        + m.origin().name());
+*/
                 if (((RepMILTMMessage) mesg).arg.getType() == Operation.LW)
                     ((RepMILTMMessage) mesg).arg.setType(Operation.RW);
 
@@ -50,6 +61,10 @@ public class RepMIUpcall implements MessageUpcall {
 
             } else if (mesg instanceof RepMIJoinMessage) {
 
+//              DEBUG
+               /* System.err.println("Got RepMI upcall for joining from "
+                        + m.origin().name());
+                */
                 /*
                  * needs to be called to release the thread before entering the
                  * processJoin call which will broadcast the join request to all
@@ -83,8 +98,11 @@ public class RepMIUpcall implements MessageUpcall {
                 return;
 
             } else if (mesg instanceof RepMISOSReplyMessage) {
-                proto.processSOSReply(ii, ((RepMISOSReplyMessage) mesg).whomIHelp, ((RepMISOSReplyMessage) mesg).TS,
+                proto.processSOSReply(ii,
+                        ((RepMISOSReplyMessage) mesg).whomIHelp,
+                        ((RepMISOSReplyMessage) mesg).TS,
                         ((RepMISOSReplyMessage) mesg).myOps);
+                return;
             }
         }
     }

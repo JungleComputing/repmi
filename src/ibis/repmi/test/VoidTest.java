@@ -72,7 +72,7 @@ public class VoidTest {
             failure = true;
             return;
         }
-        System.out.println("created ibis " + ibis.identifier());
+        System.err.println("created ibis " + ibis.identifier());
 
         rgstry = ibis.registry();
         mrh.setRegistry(rgstry);

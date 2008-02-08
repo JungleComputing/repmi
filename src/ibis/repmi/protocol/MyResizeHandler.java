@@ -211,6 +211,8 @@ public class MyResizeHandler implements RegistryEventHandler {
 
         public void upcall(ReadMessage m) throws IOException {
 
+            System.err.println("Got join upcall from " + m.origin().name());
+            
             SendPort explicitSP = myself
                     .createSendPort(LTMProtocol.explicitReceivePT);
             IbisIdentifier lastAck = null;

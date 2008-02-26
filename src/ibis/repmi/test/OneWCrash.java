@@ -4,11 +4,11 @@ import java.io.IOException;
 
 import ibis.repmi.protocol.ReplicatedMethod;
 
-public class OneWriteToMany extends VoidTest {
+public class OneWCrash extends VoidTest {
 
     protected String writerCluster;
 
-    public OneWriteToMany(long nops, int plwa, int plwm, int ncpus,
+    public OneWCrash(long nops, int plwa, int plwm, int ncpus,
             long timeout, String wC) {
 
         super(nops, plwa, plwm, ncpus, timeout);
@@ -46,7 +46,8 @@ public class OneWriteToMany extends VoidTest {
 
             proto.testReady();
         } else {
-            
+            if(ibis.identifier().location().getLevel(0).contains(
+                        this.writerCluster)) {
             long start = System.currentTimeMillis();
             while (proto.getRops() < NOPS) {
                 ;
@@ -55,7 +56,34 @@ public class OneWriteToMany extends VoidTest {
             long end = System.currentTimeMillis();
             System.err.println("Time per operation: (rops)"
                     + (double) (end - start) / NOPS);
-            } 
+            } else {     
+                
+                long start = System.currentTimeMillis();
+                while (proto.getRops() < NOPS/2) {
+                    ;
+                }
+                // MPJ.COMM_WORLD.barrier();
+                long end = System.currentTimeMillis();
+                System.err.println("Time per operation: (rops)"
+                        + (double) 2 * (end - start) / NOPS);
+                try {
+                    Long result = (Long) proto.processLocalRead(new ReplicatedMethod(
+                            "readVal", (Class[]) null, null));
+                    System.err.println("Final result = " + result);
+                } catch (SecurityException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                try {
+                    ibis.end();
+                    /*it should work with the next statement*/
+                    System.exit(0);
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                }
+        }
         // MPJ.finish();
 
         try {

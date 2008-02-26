@@ -6,11 +6,15 @@ import ibis.ipl.IbisIdentifier;
 
 public class ProcessIdentifier implements Comparable, Serializable {
 
-    private IbisIdentifier ibisId;
+    //private IbisIdentifier ibisId;
 
+    private String ibisId;
+    private String cluster;    
+    
     public ProcessIdentifier(IbisIdentifier ii) {
 
-        ibisId = ii;
+        ibisId = ii.name();
+        cluster = ii.location().getLevel(0);
     }
 
     public int compareTo(Object o) {
@@ -21,17 +25,17 @@ public class ProcessIdentifier implements Comparable, Serializable {
 
     public String toString() {
         /* might need to call ibisId.name() in the future */
-        return ibisId.toString();
+        return ibisId;
     }
 
     public String getUniqueId() {
 
-        return ibisId.name();
+        return ibisId;
     }
 
-    public String cluster() {
+    public String getCluster() {
 
-        return ibisId.location().getLevel(0);
+        return cluster;
     }
 
     public int hashCode() {

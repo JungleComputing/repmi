@@ -7,7 +7,9 @@ public class Test {
 
     static final int TWO_WRITERS_2_CLUSTERS = 2;
 
-    static final int NO_TEST = 3;
+    static final int ONE_WRITER_W_CRASH = 3;
+    
+    static final int NO_TEST = 4;
 
     public static void main(String[] args) {
         // TODO Auto-generated method stub
@@ -33,6 +35,9 @@ public class Test {
         case TWO_WRITERS_2_CLUSTERS:
             test = new TwoWritersToManyOn2Clusters(nops, cpuId, 0, ncpus,
                     timeout);
+            break;
+        case ONE_WRITER_W_CRASH:
+            test = new OneWCrash(nops, cpuId, 0, ncpus, timeout, args[5]);
             break;
         default:
             System.out.println("No test selected");

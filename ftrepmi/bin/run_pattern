@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./repmi-run -Dibis.pool.size=$4 -Dibis.server.address=fs0.das3.cs.vu.nl:$3 -Dibis.pool.name=pattern ibis.repmi.commTest.Latency 1000 -u &> $4-$1

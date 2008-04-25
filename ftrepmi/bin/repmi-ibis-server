@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# This script is a convenience script to start the ibis registry server from the
+# Ibis installation, specified in the $IBIS_HOME environment variable.
+
+# Check REPMI_HOME.
+if [ -z "$REPMI_HOME" ];  then
+    echo "please set REPMI_HOME to the location of your Ibis installation" 1>&2
+    exit 1
+fi
+
+exec "$REPMI_HOME"/bin/repmi-run -Xmx256M ibis.server.Server "$@"

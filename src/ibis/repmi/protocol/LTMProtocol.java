@@ -13,6 +13,7 @@ import java.util.Map;
 import ibis.repmi.comm.RepMIAckWelcomeMessage;
 import ibis.repmi.comm.RepMILTMMessage;
 import ibis.repmi.comm.RepMIMessage;
+import ibis.repmi.comm.RepMIRPConnectUpcall;
 import ibis.repmi.comm.RepMISOSMessage;
 import ibis.repmi.comm.RepMISOSReplyMessage;
 import ibis.repmi.comm.RepMIUpcall;
@@ -58,7 +59,8 @@ public class LTMProtocol {
     public static final PortType ptype = new PortType(new String[] {
             PortType.SERIALIZATION_OBJECT, PortType.CONNECTION_MANY_TO_MANY,
             PortType.COMMUNICATION_FIFO, PortType.COMMUNICATION_RELIABLE,
-            PortType.RECEIVE_AUTO_UPCALLS, PortType.RECEIVE_EXPLICIT });
+            PortType.RECEIVE_AUTO_UPCALLS, PortType.RECEIVE_EXPLICIT,
+            PortType.CONNECTION_UPCALLS });
 
     public static final PortType explicitReceivePT = new PortType(new String[] {
             PortType.SERIALIZATION_OBJECT, PortType.CONNECTION_ONE_TO_MANY,
@@ -774,7 +776,7 @@ public class LTMProtocol {
         ReceivePort rp = null;
         try {
             rp = ibis.createReceivePort(ptype, "repmi-" + localId.getUniqueId()
-                    + "-" + sender, new RepMIUpcall(this));
+                    + "-" + sender, new RepMIUpcall(this), new RepMIRPConnectUpcall(), null);
             rp.enableConnections();
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -817,7 +819,7 @@ public class LTMProtocol {
 
         roundManager.setPrevRoundInTrouble(ts);
         // OpsQueue myOps = roundManager.getOpsQueue(ts);
-        Object[] myOps = roundManager.getOpsList(ts);
+        Object[] myOps = roundManager.getOpsList(new ProcessIdentifier(whoAsks),ts);
         RepMISOSReplyMessage sosreply = new RepMISOSReplyMessage(myOps, whoAsks
                 .name(), recoveryRound, ts);
         synchronized (bcastLock) {

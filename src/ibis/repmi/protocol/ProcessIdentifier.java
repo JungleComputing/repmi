@@ -24,7 +24,7 @@ public class ProcessIdentifier implements Comparable, Serializable {
     }
 
     public String toString() {
-        /* might need to call ibisId.name() in the future */
+        
         return ibisId;
     }
 

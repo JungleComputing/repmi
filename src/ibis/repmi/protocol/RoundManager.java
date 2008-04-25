@@ -112,7 +112,7 @@ public class RoundManager {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
-                }
+                }              
                 localVT.updateTS(localId, op.getTS().longValue());
             }
         }
@@ -411,12 +411,16 @@ public class RoundManager {
             return cacheQueue.copy();
     }
 
-    public synchronized Object[] getOpsList(long ts) {
+    public synchronized Object[] getOpsList(ProcessIdentifier whoAsks, long ts) {
 
         if (TS == ts)
             return currentQueue.toList();
-        else
+        else {
+            if (currentQueue.contains(whoAsks)) {
+                return nextQueue.toList();
+            }
             return cacheQueue.toList();
+        }            
     }
 
     public synchronized void processReceivedQueue(Object[] objects, long ts) {
@@ -434,8 +438,11 @@ public class RoundManager {
             System.err.println("Queue size is now " + currentQueue.size());
 
             replied.add(whoAnswered);
-            if (replied.size() == alive)
-                recoveryLock.notifyAll();
+            if (replied.size() == alive) {
+                System.err.println("Notify all on recoveryLock");
+                recoveryLock.notifyAll();                
+            }
+                
         }
     }
 

@@ -81,14 +81,20 @@ public class RoundManager {
                     + roundNo);
 
         if (currentQueue.size() == 0) {
+            
+//          DEBUG 
+            System.err.println("starting new round LW, current round is:" 
+                    + roundNo);
+            
             op.setTS(TS);
             localVT.updateTS(localId, op.getTS().longValue());
             currentQueue.enqueue(op);
         } else {
-            /*
-             * // DEBUG System.out.println("waiting to start new round LW,
-             * current round is:" + currentRound);
-             */
+            
+            // DEBUG 
+            System.err.println("waiting to start new round LW, current round is:" 
+                    + roundNo);
+
             if (nextQueue.size() == 0) {
                 op.setTS(1 - TS);
                 nextQueue.enqueue(op);

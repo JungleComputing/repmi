@@ -21,9 +21,10 @@ public class OneWCrash extends VoidTest {
 
         Object[] args = new Object[1];
         args[0] = new Integer(10);
-
+        int clusterLevel = ibis.identifier().location().getLevels().length - 1;
+        
         if ((pLWA == 0)
-                && ibis.identifier().location().getLevel(0).contains(
+                && ibis.identifier().location().getLevel(clusterLevel).contains(
                         this.writerCluster)) {
 
             long start = System.currentTimeMillis();
@@ -46,7 +47,7 @@ public class OneWCrash extends VoidTest {
 
             proto.testReady();
         } else {
-            if(ibis.identifier().location().getLevel(0).contains(
+            if(ibis.identifier().location().getLevel(clusterLevel).contains(
                         this.writerCluster)) {
             long start = System.currentTimeMillis();
             while (proto.getRops() < NOPS) {

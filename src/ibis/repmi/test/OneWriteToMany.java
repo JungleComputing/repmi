@@ -17,15 +17,26 @@ public class OneWriteToMany extends VoidTest {
 
     public void run() {
 
+//      DEBUG
+        System.err.println("calling super");
+        
         super.run();
 
+//      DEBUG
+//        System.err.println("I made it outside super");
+        
         Object[] args = new Object[1];
         args[0] = new Integer(10);
 
+        int clusterLevel = ibis.identifier().location().getLevels().length - 1; 
+        
         if ((pLWA == 0)
-                && ibis.identifier().location().getLevel(0).contains(
+                && ibis.identifier().location().getLevel(clusterLevel).contains(
                         this.writerCluster)) {
 
+            //DEBUG
+            System.err.println("I am writer");
+            
             long start = System.currentTimeMillis();
 
             for (int i = 0; i < NOPS; i++) {
@@ -46,6 +57,9 @@ public class OneWriteToMany extends VoidTest {
 
             proto.testReady();
         } else {
+            
+//          DEBUG
+            System.err.println("I am reader");
             
             long start = System.currentTimeMillis();
             while (proto.getRops() < NOPS) {

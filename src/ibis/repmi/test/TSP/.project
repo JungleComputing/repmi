@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>Traveling Salesman Problem using JOINC</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.jdt.core.javabuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.jdt.core.javanature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>build</name>
+			<type>2</type>
+			<location>C:/PhD/Codes/tsp/build</location>
+		</link>
+		<link>
+			<name>applications</name>
+			<type>2</type>
+			<location>C:/PhD/Codes/tsp/src/applications</location>
+		</link>
+	</linkedResources>
+</projectDescription>

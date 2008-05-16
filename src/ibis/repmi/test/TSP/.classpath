@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" output="build" path="applications"/>
+	<classpathentry kind="var" path="JRE_LIB" sourcepath="JRE_SRC"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Java Open Infrastructure for Network Computing (JOINC)"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

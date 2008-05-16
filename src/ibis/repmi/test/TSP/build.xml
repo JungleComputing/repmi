@@ -1,0 +1,142 @@
+<project name="Traveling Salesman Problem using JOINC" 
+
+    default="usage" 
+    basedir=".">
+
+    <property environment="env"/>
+
+    <property name="srcdir"   location="src"/>
+    <property name="builddir" location="build"/>
+    <property name="docdir"   location="docs"/>
+    <property name="cpath"    location="${env.JOINC_JAR}"/>
+  
+    <target name="usage" 
+        description="Print usage string">
+
+	<echo message="Traveling Salesman Problem using JOINC:"/>
+     	<echo message="  ant build : build the application jar files."/>
+     	<echo message="  ant clean : clean up the tree."/>
+        <echo message="  ant distro: create an application tarball."/>
+    </target>
+
+    <target name="check-joinc-correct" unless="joinc.correct">
+        <echo message="Your $JOINC_JAR is not set correctly (file not found)!"/>
+        <echo message="Please ensure that is is set like this:"/>
+        <echo message="   export JOINC_JAR=$HOME/path/to/your/joinc.jar"/>
+        <fail/>
+    </target>
+
+    <target name="check-joinc-set" unless="joinc.set">
+        <echo message="Your $JOINC_JAR is not set!"/>
+        <echo message="Please set it like this:"/>
+        <echo message="   export JOINC_JAR=$HOME/path/to/your/joinc.jar"/>
+        <fail/>
+    </target>
+
+    <target name="check-ant-correct" unless="ant.correct">
+        <echo message="Your $ANT_HOME is not set!"/>
+        <echo message="Please ensure that your environment is correct by running:"/>
+        <echo message="   . /usr/local/VU/practicum/gridcomputing/environment"/>
+        <fail/>
+    </target>
+
+    <target name="check-environment">
+        <condition property="ant.correct">
+              <isset property="env.ANT_HOME"/>
+        </condition>
+
+        <condition property="joinc.set">
+              <isset property="env.JOINC_JAR"/>
+        </condition>
+
+        <available file="${env.JOINC_JAR}" property="joinc.correct"/>
+    </target>
+
+    <target name="build"
+        depends="check-environment,check-ant-correct,check-joinc-set,check-joinc-correct,perform-build" 
+        description="Build the application jar files">
+    </target>
+
+    <target name="perform-build">
+
+        <mkdir dir="${builddir}" />
+
+        <javac  srcdir="${srcdir}/applications" 
+                destdir="${builddir}" 
+                includes="**/*.java" 
+                classpath="${cpath}"
+                debug="true" 
+                deprecation="true" 
+        />
+	
+        <delete failonerror="false" file="tsp-master.jar"/>	
+        <delete failonerror="false" file="tsp-worker.jar"/>	
+
+        <jar jarfile="tsp-master.jar">
+            <fileset dir="${builddir}" >
+                <include name="applications/tsp/*" />
+                <include name="applications/util/*" />
+                <exclude name="applications/tsp/MST.class" />
+                <exclude name="applications/tsp/TSPWorker.class" />
+            </fileset>
+        </jar>
+
+        <jar jarfile="tsp-worker.jar">
+            <fileset dir="${builddir}" >
+                <include name="applications/tsp/*" />
+                <include name="applications/util/*" />
+                <exclude name="applications/tsp/TSPMaster.class" />
+            </fileset>
+        </jar>
+
+        <delete failonerror="false" dir="${builddir}" />
+    </target>
+
+    <target name="clean" 
+        description="Clean the tree">
+        <delete failonerror="false" dir="${builddir}" />
+        <delete failonerror="false" file="tsp-master.jar"/>	
+        <delete failonerror="false" file="tsp-worker.jar"/>	
+        <delete failonerror="false" file="tsp.tgz"/>	
+    </target>
+
+    <target name="distro" depends="clean"
+        description="Create distribution">
+
+        <mkdir dir="${builddir}"/>
+        <mkdir dir="${builddir}/tsp"/>
+        <mkdir dir="${builddir}/tsp/src"/>
+
+	<copy todir="${builddir}/tsp/src">
+            <fileset dir="src"/>
+        </copy>
+
+	<copy todir="${builddir}/tsp">
+            <fileset dir="./inputs">
+                <include name="**/*.tsp"/>
+            </fileset>
+        </copy>
+
+	<copy file="build.xml" todir="${builddir}/tsp"/>
+	<copy file="README" todir="${builddir}/tsp"/>
+	<copy file="run_tsp" todir="${builddir}/tsp"/>
+	<copy file="debug_tsp" todir="${builddir}/tsp"/>
+	
+	<tar compression="gzip" tarfile="tsp.tgz">
+            <tarfileset dir="${builddir}">
+                <include name="**/**"/>
+                <exclude name="**/run_tsp"/>                        
+                <exclude name="**/debug_tsp"/>                        
+            </tarfileset>
+            <tarfileset dir="${builddir}" mode="755">
+                <include name="**/run_tsp"/>                        
+                <include name="**/debug_tsp"/>                        
+            </tarfileset>
+        </tar>
+
+        <delete failonerror="false" dir="${builddir}" />
+
+    </target>
+
+</project>
+

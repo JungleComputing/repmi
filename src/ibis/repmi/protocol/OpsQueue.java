@@ -110,7 +110,13 @@ public class OpsQueue implements Serializable {
 
     public synchronized boolean contains(ProcessIdentifier pi) {
         
-        return queue.contains(new Operation(pi, null, 0));
+        //return queue.contains(new Operation(pi, new Long(), 0));
+    	Iterator iterator = queue.iterator();
+    	while (iterator.hasNext()) {
+    		if (((Operation)iterator.next()).getPid().equals(pi)) 
+    			return true;
+    	}
+    	return false;
     }
     
     public synchronized Iterator iterator() {

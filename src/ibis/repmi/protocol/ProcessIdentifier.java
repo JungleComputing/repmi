@@ -17,7 +17,14 @@ public class ProcessIdentifier implements Comparable, Serializable {
         cluster = ii.location().getLevel(0);
     }
 
-    public int compareTo(Object o) {
+    
+    public ProcessIdentifier(String ibisId) {
+    	
+		this.ibisId = ibisId;
+	}
+
+
+	public int compareTo(Object o) {
 
         ProcessIdentifier other = (ProcessIdentifier) o;
         return this.getUniqueId().compareTo(other.getUniqueId());

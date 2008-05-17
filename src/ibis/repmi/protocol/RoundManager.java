@@ -4,6 +4,7 @@ import ibis.ipl.IbisIdentifier;
 import ibis.ipl.ReadMessage;
 import ibis.repmi.comm.RepMISOSMessage;
 import ibis.repmi.protocol.LTMProtocol.ExecutionThread;
+import ibis.util.Timer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -328,17 +329,23 @@ public class RoundManager {
         /* check again i miss ops */
         if (currentQueue.size() == expectedNo)
             return;
-        if (isPrevRoundInTrouble()) {
-            try {
+        
+        long start = System.currentTimeMillis();
+        
+        /*
+        if (isPrevRoundInTrouble()) {        	
+            try { */
                 /* wait for the prev round to recover put a better decision
-                 * making condition */
-                endRLock.wait(2 * expectedNo * expectedNo * TIMEOUT);
+                 * making condition 
+                 * going away when using EOF instead of timeouts*/
+              /*  endRLock.wait(2 * expectedNo * expectedNo * TIMEOUT);
                 resetPrevRoundInTrouble();
             } catch (InterruptedException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         } else {
+        	*/
             /* i am in trouble */
             replied = Collections.synchronizedList(new ArrayList());
             alive = currentQueue.size();
@@ -346,8 +353,8 @@ public class RoundManager {
             // DEBUG
             System.err.println("Round timing out after answered " + alive);
 
-            throw new RoundTimedOutException();
-        }
+            throw new RoundTimedOutException(start);
+    	//}
     }
 
     public boolean isPrevRoundInTrouble() {
@@ -357,9 +364,9 @@ public class RoundManager {
     }
 
     /* for now i ignore a node in a next round would wake up due to timeout */
-    public void setPrevRoundInTrouble(long ts) {
+    public void setPrevRoundInTrouble(long ts, ProcessIdentifier troubled) {
         synchronized (recoveryLock) {
-            if (TS != ts)
+            if ((TS != ts) && (currentQueue.contains(troubled) == false))
                 prevRoundInTrouble = true;
         }
     }
@@ -389,7 +396,7 @@ public class RoundManager {
         // TODO Auto-generated method stub
         synchronized (recoveryLock) {
             try {
-                recoveryLock.wait(expectedNo * expectedNo * TIMEOUT);
+                recoveryLock.wait(expectedNo * TIMEOUT);
             } catch (InterruptedException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();

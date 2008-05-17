@@ -10,11 +10,13 @@ public class OpsComparator implements Comparator, Serializable {
 
         Operation o0 = (Operation) arg0;
         Operation o1 = (Operation) arg1;
-
+        
+/* no longer needed since each queue has the same TS
         if (o0.getTS().compareTo(o1.getTS()) < 0)
             return -1;
         if (o0.getTS().compareTo(o1.getTS()) > 0)
             return 1;
+  */
         return o0.getPid().compareTo(o1.getPid());
     }
 

@@ -86,6 +86,8 @@ public class LTMProtocol {
 
     public Timer timeInUpcalls = Timer.createTimer();
 
+	public long recoveryTime = 0;
+
     // public Timer timeInJoinUpcalls = Timer.createTimer();
     // public Timer timeBetweenUpcalls = Timer.createTimer();
     // public static Timer critical = Timer.createTimer();
@@ -237,6 +239,7 @@ public class LTMProtocol {
             } catch (RoundTimedOutException e) {
                 // TODO Auto-generated catch block
                 result = manageRecovery(e);
+                recoveryTime += System.currentTimeMillis() - e.startTime; 
             }
 
             // DEBUG MEAS
@@ -373,6 +376,7 @@ public class LTMProtocol {
                 roundManager.waitForEndOfRound();
             } catch (RoundTimedOutException e) {
                 manageRecovery(e);
+                recoveryTime += System.currentTimeMillis() - e.startTime;
             }
         }
 
@@ -816,10 +820,10 @@ public class LTMProtocol {
         // DEBUG
         System.err.println(ibis.identifier().name() + ": processing SOS from "
                 + whoAsks.name());
-
-        roundManager.setPrevRoundInTrouble(ts);
+        ProcessIdentifier inNeed = new ProcessIdentifier(whoAsks);
+        roundManager.setPrevRoundInTrouble(ts, inNeed);
         // OpsQueue myOps = roundManager.getOpsQueue(ts);
-        Object[] myOps = roundManager.getOpsList(new ProcessIdentifier(whoAsks),ts);
+        Object[] myOps = roundManager.getOpsList(inNeed,ts);
         RepMISOSReplyMessage sosreply = new RepMISOSReplyMessage(myOps, whoAsks
                 .name(), recoveryRound, ts);
         synchronized (bcastLock) {
@@ -835,7 +839,7 @@ public class LTMProtocol {
                 + ": processing SOS Reply from " + whoAnswered.name() + " for "
                 + whoAsked);
 
-        roundManager.setPrevRoundInTrouble(ts);
+        roundManager.setPrevRoundInTrouble(ts, new ProcessIdentifier(whoAsked));
         /* see if it is for me or not */
         roundManager.processReceivedQueue(objects, ts);
 

@@ -43,8 +43,10 @@ public class OneWCrash extends VoidTest {
             // MPJ.COMM_WORLD.barrier();
             long end = System.currentTimeMillis();
             System.out.println("Time per operation (lops): "
-                    + (double) (end - start) / NOPS);
-
+                    + (double) (end - start - proto.recoveryTime) / NOPS);
+            System.err.println("Time per recovery round: "
+                    + (double) proto.recoveryTime / 1);
+            
             proto.testReady();
         } else {
             if(ibis.identifier().location().getLevel(clusterLevel).contains(
@@ -56,7 +58,9 @@ public class OneWCrash extends VoidTest {
             // MPJ.COMM_WORLD.barrier();
             long end = System.currentTimeMillis();
             System.err.println("Time per operation: (rops)"
-                    + (double) (end - start) / NOPS);
+                    + (double) (end - start - proto.recoveryTime) / NOPS);
+            System.err.println("Time per recovery round: "
+                    + (double) proto.recoveryTime / 1);
             } else {     
                 
                 long start = System.currentTimeMillis();
@@ -67,6 +71,9 @@ public class OneWCrash extends VoidTest {
                 long end = System.currentTimeMillis();
                 System.err.println("Time per operation: (rops)"
                         + (double) 2 * (end - start) / NOPS);
+                System.err.println("Time per recovery round: "
+                        + (double) proto.recoveryTime / 1);
+                
                 try {
                     Long result = (Long) proto.processLocalRead(new ReplicatedMethod(
                             "readVal", (Class[]) null, null));

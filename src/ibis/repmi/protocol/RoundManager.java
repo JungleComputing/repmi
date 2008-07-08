@@ -2,6 +2,7 @@ package ibis.repmi.protocol;
 
 import ibis.ipl.IbisIdentifier;
 import ibis.ipl.ReadMessage;
+import ibis.ipl.ReceivePortIdentifier;
 import ibis.repmi.comm.RepMISOSMessage;
 import ibis.repmi.protocol.LTMProtocol.ExecutionThread;
 import ibis.util.Timer;
@@ -13,8 +14,6 @@ import java.util.Iterator;
 import java.util.List;
 
 public class RoundManager {
-
-    private long TIMEOUT;
 
     private long TS;
 
@@ -45,16 +44,13 @@ public class RoundManager {
 
     private long recoveryRound = 0; // by default i am in no recovery round
 
-    private boolean prevRoundInTrouble = false;
+    private boolean inRecovery = false;
 
-    private List replied;
-
-    private int alive;
+    //   private int alive;
 
     public RoundManager(LTVector ltv, long timeout) {
 
         TS = 0;
-        TIMEOUT = timeout;
         localVT = ltv;
         currentQueue = new OpsQueue();
         nextQueue = new OpsQueue();
@@ -82,19 +78,20 @@ public class RoundManager {
                     + roundNo);
 
         if (currentQueue.size() == 0) {
-            
-//          DEBUG 
-            System.err.println("starting new round LW, current round is:" 
+
+            //          DEBUG 
+            System.err.println("starting new round LW, current round is:"
                     + roundNo);
-            
+
             op.setTS(TS);
             localVT.updateTS(localId, op.getTS().longValue());
             currentQueue.enqueue(op);
         } else {
-            
+
             // DEBUG 
-            System.err.println("waiting to start new round LW, current round is:" 
-                    + roundNo);
+            System.err
+                    .println("waiting to start new round LW, current round is:"
+                            + roundNo);
 
             if (nextQueue.size() == 0) {
                 op.setTS(1 - TS);
@@ -119,7 +116,7 @@ public class RoundManager {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
-                }              
+                }
                 localVT.updateTS(localId, op.getTS().longValue());
             }
         }
@@ -162,9 +159,9 @@ public class RoundManager {
                 } else {
                     localVT.updateTS(op.getContact(), op.getTS().longValue());
                 }
-                currentQueue.enqueue(op);
                 synchronized (endRLock) {
-                    if (currentQueue.size() == expectedNo)
+                    currentQueue.enqueue(op);
+                    if ((currentQueue.size() + crashed.size()) == expectedNo)
                         endRLock.notifyAll();
                 }
                 return null;
@@ -231,39 +228,78 @@ public class RoundManager {
         // System.out.println("waiting to finish round: " + roundNo);
 
         synchronized (endRLock) {
-            while (currentQueue.size() != expectedNo) {
+            /* condition when assuming no faults 
+             * while (currentQueue.size() != expectedNo) {*/
+            while ((currentQueue.size() + crashed.size()) != expectedNo) {
                 try {
-                    endRLock.wait(TIMEOUT);
+                    endRLock.wait();
                     /* woke up by timeout */
-
-                    if (currentQueue.size() != expectedNo) {
-                        faultRecovery();
-                    }
 
                 } catch (InterruptedException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }
+            if (crashed.size() != 0) {
+                throw new RoundTimedOutException();
+            }
         }
+
+        Object result = endRound();
+        return result;
+    }
+
+    public void crashed(ProcessIdentifier c) {
 
         synchronized (this) {
-            Object result;
-            result = executor.executeAllWrites(currentQueue);
-
-            cacheQueue.clear();
-            currentQueue.move(cacheQueue);
-            processNextQueue();
-            TS = 1 - TS;
-
-            // DEBUG
-            // System.out.println("finished round: " + roundNo);
-
-            roundNo++;
-
-            notifyAll();
-            return result;
+            if (currentQueue.contains(c)) {
+                if (nextQueue.contains(c)) {
+                    nextD.add(c);
+                } else {
+                    crashedNextRound.add(c);
+                }
+            } else {
+                synchronized (endRLock) {
+                    crashed.add(c);
+                    if ((currentQueue.size() + crashed.size()) == expectedNo)
+                        endRLock.notifyAll();
+                }
+            }
         }
+        synchronized (recoveryLock) {
+            if (inRecovery) {
+                if (!helpQ.contains(c)) {
+                    crashedInRecovery.add(c);
+                    if ((helpQ.size() + crashedInRecovery.size()) == alive)
+                        recoveryLock.notifyAll();
+                }
+            }
+        }
+
+    }
+
+    private synchronized Object endRound() {
+
+        Object result;
+        result = executor.executeAllWrites(currentQueue);
+
+        executor.executeAllWrites(currentDToDeleteOpsQueue);
+        nextD.moveTo(currentD);
+        crashedNextRound.addTo(crashed);
+        crashedNextRound.clear();
+        
+        cacheQueue.clear();
+        currentQueue.move(cacheQueue);
+        processNextQueue();
+        TS = 1 - TS;
+
+        // DEBUG
+        // System.out.println("finished round: " + roundNo);
+
+        roundNo++;
+
+        notifyAll();
+        return result;
     }
 
     public void setNoConn(int expNo) {
@@ -325,68 +361,80 @@ public class RoundManager {
         return currentQueue;
     }
 
-    public void faultRecovery() throws RoundTimedOutException {
-        /* check again i miss ops */
-        if (currentQueue.size() == expectedNo)
-            return;
-        
-        long start = System.currentTimeMillis();
-        
-        /*
-        if (isPrevRoundInTrouble()) {        	
-            try { */
-                /* wait for the prev round to recover put a better decision
-                 * making condition 
-                 * going away when using EOF instead of timeouts*/
-              /*  endRLock.wait(2 * expectedNo * expectedNo * TIMEOUT);
-                resetPrevRoundInTrouble();
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        } else {
-        	*/
-            /* i am in trouble */
-            replied = Collections.synchronizedList(new ArrayList());
-            alive = currentQueue.size();
 
-            // DEBUG
-            System.err.println("Round timing out after answered " + alive);
+    //deprecated!
+    //    public void faultRecovery() throws RoundTimedOutException {
+    //        /* check again i miss ops */
+    //        if (currentQueue.size() == expectedNo)
+    //            return;
+    //        if (isPrevRoundInTrouble()) {
+    //            try {
+    //                /* wait for the prev round to recover put a better decision
+    //                 * making condition */
+    //                endRLock.wait(2 * expectedNo * expectedNo * TIMEOUT);
+    //                resetPrevRoundInTrouble();
+    //            } catch (InterruptedException e) {
+    //                // TODO Auto-generated catch block
+    //                e.printStackTrace();
+    //            }
+    //        } else {
+    //            /* i am in trouble */
+    //            replied = Collections.synchronizedList(new ArrayList());
+    //            alive = currentQueue.size();
+    //
+    //            // DEBUG
+    //            System.err.println("Round timing out after answered " + alive);
+    //
+    //            throw new RoundTimedOutException();
+    //        }
+    //    }
 
-            throw new RoundTimedOutException(start);
+    //    public boolean isPrevRoundInTrouble() {
+    //        synchronized (recoveryLock) {
+    //            return prevRoundInTrouble;
+    //        }
+    //    }
+
+
+    //    /* for now i ignore a node in a next round would wake up due to timeout */
+    //    public void setPrevRoundInTrouble(long ts) {
+    //        synchronized (recoveryLock) {
+    //            if (TS != ts)
+    //                prevRoundInTrouble = true;
+    //        }
+    //    }
+
+//            throw new RoundTimedOutException(start);
     	//}
-    }
+ //   }
 
-    public boolean isPrevRoundInTrouble() {
+
+    //    public void resetPrevRoundInTrouble() {
+    //        synchronized (recoveryLock) {
+    //            prevRoundInTrouble = false;
+    //        }
+    //    }
+
+//    public void setPrevRoundInTrouble(long ts, ProcessIdentifier troubled) {
+//        synchronized (recoveryLock) {
+//            if ((TS != ts) && (currentQueue.contains(troubled) == false))
+//                prevRoundInTrouble = true;
+//        }
+//    }
+//>>>>>>> .r8797
+
+    
+    public RepMISOSMessage startNewRecoveryRound(Object[] aliveNodes) {
+        
         synchronized (recoveryLock) {
-            return prevRoundInTrouble;
-        }
-    }
-
-    /* for now i ignore a node in a next round would wake up due to timeout */
-    public void setPrevRoundInTrouble(long ts, ProcessIdentifier troubled) {
-        synchronized (recoveryLock) {
-            if ((TS != ts) && (currentQueue.contains(troubled) == false))
-                prevRoundInTrouble = true;
-        }
-    }
-
-    public void resetPrevRoundInTrouble() {
-        synchronized (recoveryLock) {
-            prevRoundInTrouble = false;
-        }
-    }
-
-    public RepMISOSMessage startNewRecoveryRound() {
-
-        synchronized (recoveryLock) {
-
+            inRecovery = true;
+            alive = aliveNodes.length;
             recoveryRound++;
 
             // DEBUG
-            System.err.println("new recovery round started after answered "
-                    + replied.size() + " out of " + alive);
-            
+            System.err.println("new recovery round started with " + alive
+                    + " alive nodes");
+
             return new RepMISOSMessage(recoveryRound, TS);
 
         }
@@ -394,22 +442,34 @@ public class RoundManager {
 
     public boolean waitForEndOfRecoveryRound() {
         // TODO Auto-generated method stub
-        synchronized (recoveryLock) {
-            try {
-                recoveryLock.wait(expectedNo * TIMEOUT);
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
 
+        synchronized (recoveryLock) {
+
+            while ((helpQ.size() + crashedInRecovery.size()) != alive) {
+                try {
+                    recoveryLock.wait();
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+//=======
+//            try {
+//                recoveryLock.wait(expectedNo * TIMEOUT);
+//            } catch (InterruptedException e) {
+//                // TODO Auto-generated catch block
+//                e.printStackTrace();
+//>>>>>>> .r8797
+            }
             // DEBUG
             System.err.println("finished recovery round: " + recoveryRound
-                    + "; replied = " + replied.size());
+                    + "; replied = " + helpQ.size());
+
+            processHelpQueue();
 
             if ((currentQueue.size() != expectedNo)
-                    && (replied.size() != alive)) {
-                alive = replied.size();
-                replied.clear();
+                    && (crashedInRecovery.size() != 0)) {
+                // helpQ.clear(); will be already cleared by process helpQueue
+                crashedInRecovery.clear();
                 return true;
             } else
                 return false;
@@ -433,52 +493,48 @@ public class RoundManager {
                 return nextQueue.toList();
             }
             return cacheQueue.toList();
-        }            
+        }
     }
 
-    public synchronized void processReceivedQueue(Object[] objects, long ts) {
-        if (TS == ts) {
-            currentQueue.merge(objects);
-        } else
-            return;
-    }
+//    public synchronized void processReceivedQueue(Object[] objects, long ts) {
+//        if (TS == ts) {
+//            currentQueue.merge(objects);
+//        } else
+//            return;
+//    }
 
-    public void receivedSOSReply(IbisIdentifier whoAnswered) {
+    public void receivedSOSReply(IbisIdentifier whoAnswered, Object[] objects) {
         synchronized (recoveryLock) {
 
             // DEBUG
             System.err.println("Received SOSReply from " + whoAnswered.name());
-            System.err.println("Queue size is now " + currentQueue.size());
+            System.err.println("Help queue size is now " + currentQueue.size());
 
-            replied.add(whoAnswered);
-            if (replied.size() == alive) {
-                System.err.println("Notify all on recoveryLock");
-                recoveryLock.notifyAll();                
-            }
-                
+            helpQ.add(whoAnswered, objects);
+            System.err.println("Notify all on recoveryLock");
+            if ((helpQ.size() + crashedInRecovery.size()) != alive)
+                recoveryLock.notifyAll();
         }
     }
 
-    public synchronized Object endRecoveredRound() {
-        Object result;
-        result = executor.executeAllWrites(currentQueue);
+    public Object endRecoveredRound() {
 
-        cacheQueue.clear();
-        currentQueue.move(cacheQueue);
-        processNextQueue();
-        TS = 1 - TS;
+        synchronized (recoveryLock) {
 
-        // DEBUG
-        System.err.println("finished recovered round: " + roundNo
-                + "; alive = " + alive);
+            if (currentQueue.size() < expectedNo) {
+                //iterate over crashed and if not in currentQueue, 
+                //delete from crash and construct a LEAVE op for this node and
+                //enqueue it in currentQueue.
+            }
+            inRecovery = false;            
 
-        recoveryRound = 0;
-        expectedNo = alive + 1;
+            //DEBUG
+            System.err.println("finished recovered round: " + roundNo);
 
-        roundNo++;
+            recoveryRound = 0;
+        }
 
-        notifyAll();
+        Object result = endRound();
         return result;
-
     }
 }

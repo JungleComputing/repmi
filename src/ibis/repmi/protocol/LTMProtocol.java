@@ -188,6 +188,10 @@ public class LTMProtocol {
 
         executor = new ExecutionThread();
         roundManager.setExecutor(executor);
+        /*
+         * setNoConn arg has to be modified
+         * roundManager.getCurrentQueue().size()
+         */
         roundManager.setNoConn(sendPort.connectedTo().length);
         roundManager.start();
 
@@ -318,7 +322,8 @@ public class LTMProtocol {
             try {
                 roundManager.waitForEndOfRound();
             } catch (RoundTimedOutException e) {
-                manageRecovery(e);;
+                manageRecovery(e);
+                ;
             }
 
             // timeInJoinUpcalls.stop();
@@ -495,7 +500,7 @@ public class LTMProtocol {
                 // DEBUG
                 System.err.println("Disconnecting from "
                         + o.getPid().getUniqueId());
-                roundManager.setNoConn(sendPort.connectedTo().length);
+                roundManager.setNoConn(/* sendPort.connectedTo().length */);
             }
         }
     }
@@ -556,7 +561,7 @@ public class LTMProtocol {
 
                     addNewRpi(newcomer);
                     sendPort.connect(newcomer);
-                    roundManager.setNoConn(sendPort.connectedTo().length);
+                    roundManager.setNoConn(/* sendPort.connectedTo().length */);
 
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -613,7 +618,7 @@ public class LTMProtocol {
 
                     addNewRpi(newcomer);
                     sendPort.connect(newcomer);
-                    roundManager.setNoConn(sendPort.connectedTo().length);
+                    roundManager.setNoConn(/* sendPort.connectedTo().length */);
 
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -780,7 +785,8 @@ public class LTMProtocol {
         ReceivePort rp = null;
         try {
             rp = ibis.createReceivePort(ptype, "repmi-" + localId.getUniqueId()
-                    + "-" + sender, new RepMIUpcall(this), new RepMIRPConnectUpcall(), null);
+                    + "-" + sender, new RepMIUpcall(this),
+                    new RepMIRPConnectUpcall(this), null);
             rp.enableConnections();
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -820,10 +826,19 @@ public class LTMProtocol {
         // DEBUG
         System.err.println(ibis.identifier().name() + ": processing SOS from "
                 + whoAsks.name());
+<<<<<<< .mine
+
+=======
         ProcessIdentifier inNeed = new ProcessIdentifier(whoAsks);
         roundManager.setPrevRoundInTrouble(ts, inNeed);
+>>>>>>> .r8797
         // OpsQueue myOps = roundManager.getOpsQueue(ts);
+<<<<<<< .mine
+        Object[] myOps = roundManager.getOpsList(
+                new ProcessIdentifier(whoAsks), ts);
+=======
         Object[] myOps = roundManager.getOpsList(inNeed,ts);
+>>>>>>> .r8797
         RepMISOSReplyMessage sosreply = new RepMISOSReplyMessage(myOps, whoAsks
                 .name(), recoveryRound, ts);
         synchronized (bcastLock) {
@@ -839,24 +854,32 @@ public class LTMProtocol {
                 + ": processing SOS Reply from " + whoAnswered.name() + " for "
                 + whoAsked);
 
+<<<<<<< .mine
+=======
         roundManager.setPrevRoundInTrouble(ts, new ProcessIdentifier(whoAsked));
+>>>>>>> .r8797
         /* see if it is for me or not */
-        roundManager.processReceivedQueue(objects, ts);
-
         if (whoAsked.compareTo(this.ibis.identifier().name()) == 0) {
-            roundManager.receivedSOSReply(whoAnswered);
+            roundManager.receivedSOSReply(whoAnswered, objects);
         }
     }
 
     protected Object manageRecovery(RoundTimedOutException e) {
         e.printStackTrace();
-        RepMISOSMessage sos = roundManager.startNewRecoveryRound();
+        RepMISOSMessage sos = roundManager.startNewRecoveryRound(sendPort
+                .connectedTo());
+
         broadcast(sos);
         while (roundManager.waitForEndOfRecoveryRound()) {
-            sos = roundManager.startNewRecoveryRound();
+            sos = roundManager.startNewRecoveryRound(sendPort.connectedTo());
             broadcast(sos);
         }
         Object result = roundManager.endRecoveredRound();
         return result;
+    }
+
+    public void processCrash(IbisIdentifier identifier) {
+        // TODO Auto-generated method stub
+        roundManager.crashed(new ProcessIdentifier(identifier));
     }
 }

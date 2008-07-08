@@ -46,7 +46,9 @@ public class RoundManager {
 
     private boolean inRecovery = false;
 
-    //   private int alive;
+    private PIList crashed, crashedNextRound, crashedInRecovery, currentD, nextD, helpQ;
+    
+    private int alive;
 
     public RoundManager(LTVector ltv, long timeout) {
 
@@ -57,6 +59,12 @@ public class RoundManager {
         cacheQueue = new OpsQueue();
         endRLock = new byte[0];
         recoveryLock = new byte[0];
+        crashed = new PIList();
+        crashedNextRound = new PIList();
+        crashedInRecovery = new PIList();
+        currentD = new PIList();
+        nextD = new PIList();
+        helpQ = new PIList();
     }
 
     public void setPid(ProcessIdentifier lid) {
@@ -283,10 +291,9 @@ public class RoundManager {
         Object result;
         result = executor.executeAllWrites(currentQueue);
 
-        executor.executeAllWrites(currentDToDeleteOpsQueue);
+        executor.executeAllWrites(currentD.toDeleteOpsQ());
         nextD.moveTo(currentD);
-        crashedNextRound.addTo(crashed);
-        crashedNextRound.clear();
+        crashedNextRound.moveTo(crashed);
         
         cacheQueue.clear();
         currentQueue.move(cacheQueue);
@@ -476,6 +483,11 @@ public class RoundManager {
         }
     }
 
+    private void processHelpQueue() {
+    	
+    	helpQ.moveTo(currentQueue);
+    }
+    
     public synchronized OpsQueue getOpsQueue(long ts) {
 
         if (TS == ts)
@@ -510,7 +522,7 @@ public class RoundManager {
             System.err.println("Received SOSReply from " + whoAnswered.name());
             System.err.println("Help queue size is now " + currentQueue.size());
 
-            helpQ.add(whoAnswered, objects);
+            helpQ.add(new ProcessIdentifier(whoAnswered), objects);
             System.err.println("Notify all on recoveryLock");
             if ((helpQ.size() + crashedInRecovery.size()) != alive)
                 recoveryLock.notifyAll();
@@ -522,9 +534,7 @@ public class RoundManager {
         synchronized (recoveryLock) {
 
             if (currentQueue.size() < expectedNo) {
-                //iterate over crashed and if not in currentQueue, 
-                //delete from crash and construct a LEAVE op for this node and
-                //enqueue it in currentQueue.
+                crashed.moveTo(currentQueue);                
             }
             inRecovery = false;            
 
@@ -537,4 +547,14 @@ public class RoundManager {
         Object result = endRound();
         return result;
     }
+
+	public void decNoConn() {
+		// TODO Auto-generated method stub
+		expectedNo --;
+	}
+
+	public void incNoConn() {
+		// TODO Auto-generated method stub
+		expectedNo ++;
+	}
 }

@@ -3,6 +3,7 @@ package ibis.repmi.protocol;
 import ibis.ipl.IbisIdentifier;
 import ibis.ipl.ReadMessage;
 import ibis.ipl.ReceivePortIdentifier;
+import ibis.ipl.SendPort;
 import ibis.repmi.comm.RepMISOSMessage;
 import ibis.repmi.protocol.LTMProtocol.ExecutionThread;
 import ibis.util.Timer;
@@ -259,6 +260,8 @@ public class RoundManager {
 
     public void crashed(ProcessIdentifier c) {
 
+        //DEBUG
+        System.err.println("crashed node " + c);
         synchronized (this) {
             if (currentQueue.contains(c)) {
                 if (nextQueue.contains(c)) {
@@ -283,7 +286,6 @@ public class RoundManager {
                 }
             }
         }
-
     }
 
     private synchronized Object endRound() {
@@ -367,75 +369,12 @@ public class RoundManager {
 
         return currentQueue;
     }
-
-
-    //deprecated!
-    //    public void faultRecovery() throws RoundTimedOutException {
-    //        /* check again i miss ops */
-    //        if (currentQueue.size() == expectedNo)
-    //            return;
-    //        if (isPrevRoundInTrouble()) {
-    //            try {
-    //                /* wait for the prev round to recover put a better decision
-    //                 * making condition */
-    //                endRLock.wait(2 * expectedNo * expectedNo * TIMEOUT);
-    //                resetPrevRoundInTrouble();
-    //            } catch (InterruptedException e) {
-    //                // TODO Auto-generated catch block
-    //                e.printStackTrace();
-    //            }
-    //        } else {
-    //            /* i am in trouble */
-    //            replied = Collections.synchronizedList(new ArrayList());
-    //            alive = currentQueue.size();
-    //
-    //            // DEBUG
-    //            System.err.println("Round timing out after answered " + alive);
-    //
-    //            throw new RoundTimedOutException();
-    //        }
-    //    }
-
-    //    public boolean isPrevRoundInTrouble() {
-    //        synchronized (recoveryLock) {
-    //            return prevRoundInTrouble;
-    //        }
-    //    }
-
-
-    //    /* for now i ignore a node in a next round would wake up due to timeout */
-    //    public void setPrevRoundInTrouble(long ts) {
-    //        synchronized (recoveryLock) {
-    //            if (TS != ts)
-    //                prevRoundInTrouble = true;
-    //        }
-    //    }
-
-//            throw new RoundTimedOutException(start);
-    	//}
- //   }
-
-
-    //    public void resetPrevRoundInTrouble() {
-    //        synchronized (recoveryLock) {
-    //            prevRoundInTrouble = false;
-    //        }
-    //    }
-
-//    public void setPrevRoundInTrouble(long ts, ProcessIdentifier troubled) {
-//        synchronized (recoveryLock) {
-//            if ((TS != ts) && (currentQueue.contains(troubled) == false))
-//                prevRoundInTrouble = true;
-//        }
-//    }
-//>>>>>>> .r8797
-
     
-    public RepMISOSMessage startNewRecoveryRound(Object[] aliveNodes) {
+    public RepMISOSMessage startNewRecoveryRound(SendPort sp) {
         
         synchronized (recoveryLock) {
             inRecovery = true;
-            alive = aliveNodes.length;
+            alive = sp.connectedTo().length;
             recoveryRound++;
 
             // DEBUG
@@ -443,7 +382,6 @@ public class RoundManager {
                     + " alive nodes");
 
             return new RepMISOSMessage(recoveryRound, TS);
-
         }
     }
 
@@ -459,15 +397,8 @@ public class RoundManager {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
-//=======
-//            try {
-//                recoveryLock.wait(expectedNo * TIMEOUT);
-//            } catch (InterruptedException e) {
-//                // TODO Auto-generated catch block
-//                e.printStackTrace();
-//>>>>>>> .r8797
             }
-            // DEBUG
+                    // DEBUG
             System.err.println("finished recovery round: " + recoveryRound
                     + "; replied = " + helpQ.size());
 
@@ -508,24 +439,23 @@ public class RoundManager {
         }
     }
 
-//    public synchronized void processReceivedQueue(Object[] objects, long ts) {
-//        if (TS == ts) {
-//            currentQueue.merge(objects);
-//        } else
-//            return;
-//    }
-
     public void receivedSOSReply(IbisIdentifier whoAnswered, Object[] objects) {
         synchronized (recoveryLock) {
 
-            // DEBUG
-            System.err.println("Received SOSReply from " + whoAnswered.name());
-            System.err.println("Help queue size is now " + currentQueue.size());
-
             helpQ.add(new ProcessIdentifier(whoAnswered), objects);
-            System.err.println("Notify all on recoveryLock");
-            if ((helpQ.size() + crashedInRecovery.size()) != alive)
-                recoveryLock.notifyAll();
+            
+            if ((helpQ.size() + crashedInRecovery.size()) == alive) {
+                
+                //DEBUG
+                System.err.println("Notify all on recoveryLock");
+                
+                recoveryLock.notifyAll();                
+            }                
+            
+            //DEBUG
+            System.err.println("Received SOSReply from " + whoAnswered.name());
+            System.err.println("Help queue size is now " + helpQ.size());
+            System.err.println("crashed in recovery queue size is now " + crashedInRecovery.size());
         }
     }
 

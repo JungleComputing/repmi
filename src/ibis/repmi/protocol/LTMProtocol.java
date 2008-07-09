@@ -26,11 +26,11 @@ public class LTMProtocol {
 
     private OpsQueue oq;
 
-    private ProcessIdentifier localId;
+    public ProcessIdentifier localId;
 
     private LTVector localLTM;
 
-    private SendPort sendPort;
+    public SendPort sendPort;
 
     private Ibis ibis;
 
@@ -67,6 +67,8 @@ public class LTMProtocol {
             PortType.COMMUNICATION_FIFO, PortType.COMMUNICATION_RELIABLE,
             PortType.RECEIVE_EXPLICIT });
 
+    private RepMIRPConnectUpcall RPConnectUpcall;
+    
     // MEAS
     private long readVal = 0;
 
@@ -102,6 +104,7 @@ public class LTMProtocol {
         roundManager = new RoundManager(ltm, timeout);
         myReceivers = new HashMap();
         receivers = new HashMap();
+        RPConnectUpcall = new RepMIRPConnectUpcall(this); 
     }
 
     public void setProcessIdentifier(ProcessIdentifier localProcessId) {
@@ -786,7 +789,7 @@ public class LTMProtocol {
         try {
             rp = ibis.createReceivePort(ptype, "repmi-" + localId.getUniqueId()
                     + "-" + sender, new RepMIUpcall(this),
-                    new RepMIRPConnectUpcall(this), null);
+                    RPConnectUpcall, null);
             rp.enableConnections();
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -826,17 +829,9 @@ public class LTMProtocol {
         // DEBUG
         System.err.println(ibis.identifier().name() + ": processing SOS from "
                 + whoAsks.name());
-//<<<<<<< .mine
-//        ProcessIdentifier inNeed = new ProcessIdentifier(whoAsks);
-//        roundManager.setPrevRoundInTrouble(ts, inNeed);
-//>>>>>>> .r8797
-        // OpsQueue myOps = roundManager.getOpsQueue(ts);
-//<<<<<<< .mine
+
         Object[] myOps = roundManager.getOpsList(
                 new ProcessIdentifier(whoAsks), ts);
-//=======
-//        Object[] myOps = roundManager.getOpsList(inNeed,ts);
-//>>>>>>> .r8797
         RepMISOSReplyMessage sosreply = new RepMISOSReplyMessage(myOps, whoAsks
                 .name(), recoveryRound, ts);
         synchronized (bcastLock) {
@@ -852,10 +847,6 @@ public class LTMProtocol {
                 + ": processing SOS Reply from " + whoAnswered.name() + " for "
                 + whoAsked);
 
-//<<<<<<< .mine
-//=======
-//        roundManager.setPrevRoundInTrouble(ts, new ProcessIdentifier(whoAsked));
-//>>>>>>> .r8797
         /* see if it is for me or not */
         if (whoAsked.compareTo(this.ibis.identifier().name()) == 0) {
             roundManager.receivedSOSReply(whoAnswered, objects);
@@ -864,12 +855,11 @@ public class LTMProtocol {
 
     protected Object manageRecovery(RoundTimedOutException e) {
         e.printStackTrace();
-        RepMISOSMessage sos = roundManager.startNewRecoveryRound(sendPort
-                .connectedTo());
+        RepMISOSMessage sos = roundManager.startNewRecoveryRound(sendPort);
 
         broadcast(sos);
         while (roundManager.waitForEndOfRecoveryRound()) {
-            sos = roundManager.startNewRecoveryRound(sendPort.connectedTo());
+            sos = roundManager.startNewRecoveryRound(sendPort);
             broadcast(sos);
         }
         Object result = roundManager.endRecoveredRound();

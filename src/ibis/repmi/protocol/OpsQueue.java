@@ -140,7 +140,7 @@ public class OpsQueue implements Serializable {
         return queue.size();
     }
 
-    public Object[] toList() {
+    public synchronized Object[] toList() {
         return queue.toArray();
     }
 
@@ -154,8 +154,8 @@ public class OpsQueue implements Serializable {
         return newOq;
     }
 
-    public void merge(Object[] objects) {
-        for (Object ob : queue) {
+    public synchronized void merge(Object[] objects) {
+        for (Object ob : objects) {
             enqueue((Operation) ob);
         }
     }

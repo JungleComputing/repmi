@@ -42,7 +42,7 @@ public class PIList {
 		return opq;
 	}
 
-	public synchronized OpsQueue toDeleteOpsQ(OpsQueue opq){
+	public synchronized void toDeleteOpsQ(OpsQueue opq){
 		Set keys = pis.keySet();
 				
 		Iterator piIt = keys.iterator();
@@ -53,7 +53,6 @@ public class PIList {
 				piIt.remove();
 			}			
 		}
-		return opq;
 	}
 	
 	public void moveTo(PIList currentD) {

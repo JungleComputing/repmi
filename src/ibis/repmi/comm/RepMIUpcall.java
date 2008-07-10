@@ -16,8 +16,6 @@ public class RepMIUpcall implements MessageUpcall {
 
     LTMProtocol proto;
 
-    Object mesg;
-
     public RepMIUpcall(LTMProtocol proto) {
 
         this.proto = proto;
@@ -27,7 +25,8 @@ public class RepMIUpcall implements MessageUpcall {
 
         // DEBUG
        // System.err.println("Got RepMI upcall from " + m.origin().name());
-
+    	Object mesg;
+    	
         try {
             mesg = m.readObject();
         } catch (ClassNotFoundException e) {

@@ -77,7 +77,17 @@ public class PIList {
 			currentQueue.merge((Object[])pis.get(piIt.next()));			
 			piIt.remove();
 		}
-		
+	}
+	
+	public String toString() {
+	
+		Set keys = pis.keySet();
+		Iterator piIt = keys.iterator();
+		String res = "";
+		while(piIt.hasNext()) {
+			res += ((ProcessIdentifier)piIt.next()).toString()+",";
+		}
+		return res;
 	}
 }
 

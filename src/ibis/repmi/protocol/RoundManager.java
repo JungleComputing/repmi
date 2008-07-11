@@ -89,7 +89,7 @@ public class RoundManager {
 
 		if (currentQueue.size() == 0) {
 
-			//          DEBUG 
+			// DEBUG
 			System.err.println("starting new round LW, current round is:"
 					+ roundNo);
 
@@ -98,7 +98,7 @@ public class RoundManager {
 			currentQueue.enqueue(op);
 		} else {
 
-			// DEBUG 
+			// DEBUG
 			System.err
 					.println("waiting to start new round LW, current round is:"
 							+ roundNo);
@@ -131,7 +131,7 @@ public class RoundManager {
 			}
 		}
 
-		// DEBUG 
+		// DEBUG
 		System.out.println("new round LW started: " + roundNo);
 
 		return;
@@ -239,8 +239,10 @@ public class RoundManager {
 		// System.out.println("waiting to finish round: " + roundNo);
 
 		synchronized (endRLock) {
-			/* condition when assuming no faults 
-			 * while (currentQueue.size() != expectedNo) {*/
+			/*
+			 * condition when assuming no faults while (currentQueue.size() !=
+			 * expectedNo) {
+			 */
 			while ((currentQueue.size() + crashed.size()) != expectedNo) {
 				try {
 					endRLock.wait();
@@ -262,7 +264,7 @@ public class RoundManager {
 
 	public void crashed(ProcessIdentifier c) {
 
-		//DEBUG
+		// DEBUG
 		System.err.println("crashed node " + c);
 		synchronized (this) {
 			if (currentQueue.contains(c)) {
@@ -376,7 +378,8 @@ public class RoundManager {
 
 		synchronized (recoveryLock) {
 			inRecovery = true;
-			alive = sp.connectedTo().length;
+			/*alive = sp.connectedTo().length;*/
+			alive = currentQueue.size()-(nextD.size()+crashedNextRound.size())-1;
 			recoveryRound++;
 
 			// DEBUG
@@ -401,9 +404,13 @@ public class RoundManager {
 				}
 			}
 			// DEBUG
-			System.err.println("finished recovery round: " + recoveryRound
-					+ "; replied = " + helpQ.size());
-
+			System.err.println("finished recovery round: " + recoveryRound	
+					+ " ; alive: " + alive
+					+ "  ; \n helpQ: (" + helpQ + ") ; \n crashed: (" + crashed
+					+ ") ; \n nextD: (" + nextD + ") ; \n currentD: ("
+					+ currentD + ") ; \n crashed in recovery: ("
+					+ crashedInRecovery + ")");
+			
 			processHelpQueue();
 
 			if ((currentQueue.size() != expectedNo)
@@ -446,7 +453,7 @@ public class RoundManager {
 
 			helpQ.add(new ProcessIdentifier(whoAnswered), objects);
 
-			//DEBUG
+			// DEBUG
 			System.err.println("Received SOSReply from " + whoAnswered.name());
 			System.err.println("Help queue size is now " + helpQ.size());
 			System.err.println("crashed in recovery queue size is now "
@@ -454,7 +461,7 @@ public class RoundManager {
 
 			if ((helpQ.size() + crashedInRecovery.size()) == alive) {
 
-				//DEBUG
+				// DEBUG
 				System.err.println("Notify all on recoveryLock");
 
 				recoveryLock.notifyAll();
@@ -471,16 +478,19 @@ public class RoundManager {
 			}
 			inRecovery = false;
 
-			//DEBUG
+			// DEBUG
 			System.err.println("finished recovered round: " + roundNo
-					+ "; crashed size: " + crashed.size());
+					+ "  ; \n helpQ: (" + helpQ + ") ; \n crashed: (" + crashed
+					+ ") ; \n nextD: (" + nextD + ") ; \n currentD: ("
+					+ currentD + ") ; \n crashed in recovery: ("
+					+ crashedInRecovery + ")");
 
 			recoveryRound = 0;
 		}
 
 		Object result = endRound();
 
-		//DEBUG
+		// DEBUG
 		System.err.println("expectedNo: " + expectedNo);
 
 		return result;

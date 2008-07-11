@@ -30,6 +30,7 @@ public class RepMIRPConnectUpcall implements ReceivePortConnectUpcall {
 					+ arg1.ibisIdentifier().name() + " because "
 					+ arg2.getLocalizedMessage());
 			arg2.printStackTrace();
+			/*
 			while (isConnectedTo(proto.sendPort.connectedTo(), "repmi-"
 					+ arg1.ibisIdentifier().name() + "-"
 					+ proto.localId.getUniqueId())) {
@@ -44,7 +45,7 @@ public class RepMIRPConnectUpcall implements ReceivePortConnectUpcall {
 			}
 			System.err.println(">> left connections "
 					+ proto.sendPort.connectedTo().length);
-		
+		*/
 		proto.processCrash(arg1.ibisIdentifier());
 		}
 	}

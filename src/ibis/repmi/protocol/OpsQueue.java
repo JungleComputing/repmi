@@ -163,7 +163,7 @@ public class OpsQueue implements Serializable {
     public synchronized String toString() {
         String res = "";
         for(Object ob : queue) {
-            res += ((Operation)ob).getPid().toString()+ ",";
+            res += ((Operation)ob).getPid().toString()+ "-" + ((Operation) ob).getType() + ",";
         }
         return res;
     }

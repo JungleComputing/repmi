@@ -385,7 +385,8 @@ public class RoundManager {
 
             // DEBUG
             System.err.println("new recovery round started with " + alive
-                    + " alive nodes");
+                    + " alive nodes"
+                    + "  ; \n currentQ: (" + currentQueue);
 
             return new RepMISOSMessage(recoveryRound, TS);
         }
@@ -478,6 +479,7 @@ public class RoundManager {
             if (currentQueue.size() < expectedNo) {
                 crashed.toDeleteOpsQ(currentQueue);
             }
+            crashedInRecovery.clear();
             inRecovery = false;
             recoveryRound = 0;
         }

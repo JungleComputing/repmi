@@ -156,7 +156,15 @@ public class OpsQueue implements Serializable {
 
     public synchronized void merge(Object[] objects) {
         for (Object ob : objects) {
-            enqueue((Operation) ob);
+            enqueue(new Operation((Operation) ob));
         }
+    }
+    
+    public synchronized String toString() {
+        String res = "";
+        for(Object ob : queue) {
+            res += ((Operation)ob).getPid().toString()+ ",";
+        }
+        return res;
     }
 }

@@ -79,6 +79,8 @@ public class LTMProtocol {
     private long elapsedTime;
 
     private long perOperationTime;
+    
+    private long perRecoveryTime;
 
     private Timer timeInBcast = Timer.createTimer();
 
@@ -87,8 +89,12 @@ public class LTMProtocol {
     private Timer timeWaitingStartRound = Timer.createTimer();
 
     public Timer timeInUpcalls = Timer.createTimer();
+    
+    public Timer timeInRecovery = Timer.createTimer();
 
-	public long recoveryTime = 0;
+	public long recoveryTime;
+
+	
 
     // public Timer timeInJoinUpcalls = Timer.createTimer();
     // public Timer timeBetweenUpcalls = Timer.createTimer();
@@ -855,6 +861,8 @@ public class LTMProtocol {
 
     protected Object manageRecovery(RoundTimedOutException e) {
         e.printStackTrace();
+        timeInRecovery.start();
+        long start = System.currentTimeMillis();
         RepMISOSMessage sos = roundManager.startNewRecoveryRound(sendPort);
 
         broadcast(sos);
@@ -863,6 +871,9 @@ public class LTMProtocol {
             broadcast(sos);
         }
         Object result = roundManager.endRecoveredRound();
+        long end = System.currentTimeMillis();
+        recoveryTime = recoveryTime + (end-start);
+        timeInRecovery.stop();
         return result;
     }
 

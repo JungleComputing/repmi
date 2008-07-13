@@ -52,6 +52,8 @@ public class RoundManager {
 
     private int alive;
 
+	private OpsQueue deleteCrashedQueue;
+
     public RoundManager(LTVector ltv, long timeout) {
 
         TS = 0;
@@ -59,6 +61,7 @@ public class RoundManager {
         currentQueue = new OpsQueue();
         nextQueue = new OpsQueue();
         cacheQueue = new OpsQueue();
+        deleteCrashedQueue = new OpsQueue();
         endRLock = new byte[0];
         recoveryLock = new byte[0];
         crashed = new PIList();
@@ -297,7 +300,10 @@ public class RoundManager {
         Object result;
         result = executor.executeAllWrites(currentQueue);
 
-        executor.executeAllWrites(currentD.toDeleteOpsQ());
+        //toDeleteOpsQ() clears internal list
+        executor.executeAllWrites(currentD.toDeleteOpsQ()); 
+        executor.executeAllWrites(deleteCrashedQueue);
+        deleteCrashedQueue.clear();
         nextD.moveTo(currentD);
         crashedNextRound.moveTo(crashed);
 
@@ -386,7 +392,9 @@ public class RoundManager {
             // DEBUG
             System.err.println("new recovery round started with " + alive
                     + " alive nodes"
-                    + "  ; \n currentQ: (" + currentQueue);
+                    + "  ; \n currentQ " + currentQueue.size() + ": (" + currentQueue
+                    + ") ; \n nextD: (" + nextD
+                    + ") ; \n crashedNextRound: (" + crashedNextRound);
 
             return new RepMISOSMessage(recoveryRound, TS);
         }
@@ -428,7 +436,9 @@ public class RoundManager {
 
     private void processHelpQueue() {
 
+    	//TODO improve performance here by unifying the 2 iterations
         helpQ.moveTo(currentQueue);
+        crashed.transferTo(crashedNextRound,currentQueue);
     }
 
     public synchronized Object[] getOpsList(ProcessIdentifier whoAsks, long ts) {
@@ -446,6 +456,7 @@ public class RoundManager {
     public void receivedSOSReply(IbisIdentifier whoAnswered, Object[] objects) {
         synchronized (recoveryLock) {
 
+        	toRW(objects);
             helpQ.add(new ProcessIdentifier(whoAnswered), objects);
 
             // DEBUG
@@ -464,7 +475,15 @@ public class RoundManager {
         }
     }
 
-    public Object endRecoveredRound() {
+    private void toRW(Object[] objects) {
+    	
+		for(Object ob : objects) {
+			if(((Operation)ob).getType() == Operation.LW)
+				((Operation)ob).setType(Operation.RW);
+		}
+	}
+
+	public Object endRecoveredRound() {
 
         synchronized (recoveryLock) {
 
@@ -477,18 +496,19 @@ public class RoundManager {
                     + crashedInRecovery + ")");
             
             if (currentQueue.size() < expectedNo) {
-                crashed.toDeleteOpsQ(currentQueue);
+            	crashed.toDeleteOpsQ(currentQueue,deleteCrashedQueue);
             }
             crashedInRecovery.clear();
             inRecovery = false;
             recoveryRound = 0;
         }
 
+        
         Object result = endRound();
 
         // DEBUG
-        System.err.println("expectedNo: " + expectedNo);
-
+        System.err.println("new expectedNo: " + expectedNo);
+        
         return result;
     }
 

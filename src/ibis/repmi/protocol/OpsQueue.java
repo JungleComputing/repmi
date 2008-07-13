@@ -155,7 +155,7 @@ public class OpsQueue implements Serializable {
     }
 
     public synchronized void merge(Object[] objects) {
-        for (Object ob : objects) {
+        for (Object ob : objects) {        	
             enqueue(new Operation((Operation) ob));
         }
     }

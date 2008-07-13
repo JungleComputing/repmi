@@ -42,14 +42,14 @@ public class PIList {
 		return opq;
 	}
 
-	public synchronized void toDeleteOpsQ(OpsQueue opq){
+	public synchronized void toDeleteOpsQ(OpsQueue crtq, OpsQueue delq){
 		Set keys = pis.keySet();
 				
 		Iterator piIt = keys.iterator();
 		while(piIt.hasNext()) {
 			ProcessIdentifier pi = (ProcessIdentifier)piIt.next();
-			if(opq.contains(pi) == false) {
-				opq.enqueue(new Operation(pi, new Long(-1), Operation.LEAVE));
+			if(crtq.contains(pi) == false) {
+				delq.enqueue(new Operation(pi, new Long(-1), Operation.LEAVE));
 				piIt.remove();
 			}			
 		}
@@ -88,6 +88,18 @@ public class PIList {
 			res += ((ProcessIdentifier)piIt.next()).toString()+",";
 		}
 		return res;
+	}
+
+	public void transferTo(PIList crashedNextRound, OpsQueue currentQueue) {
+		Set keys = pis.keySet();
+		Iterator piIt = keys.iterator();
+		while(piIt.hasNext()) {
+			ProcessIdentifier pi = (ProcessIdentifier)piIt.next();
+			if(currentQueue.contains(pi)) {
+				crashedNextRound.add(pi);
+				piIt.remove();
+			}
+		}		
 	}
 }
 

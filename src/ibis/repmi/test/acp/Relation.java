@@ -1,6 +1,5 @@
-/* $Id$ */
 
-package acp;
+package ibis.repmi.test.acp;
 
 class Relation implements java.io.Serializable {
 

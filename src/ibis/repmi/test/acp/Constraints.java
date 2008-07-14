@@ -1,10 +1,4 @@
-Expires: Mon, 14 Jul 2008 12:57:58 GMT
-Cache-Control: max-age=600
-ETag: "8383"
-
-/* $Id$ */
-
-package acp;
+package ibis.repmi.test.acp;
 
 class Constraints implements java.io.Serializable {
 

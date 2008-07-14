@@ -1,6 +1,5 @@
-/* $Id$ */
 
-package acp;
+package ibis.repmi.test.acp;
 
 /*
  # Implementation in orca of Numerical Recipes ran1() but with integer result

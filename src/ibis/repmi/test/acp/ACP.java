@@ -1,6 +1,8 @@
 package ibis.repmi.test.acp;
 
-class ACP {
+import ibis.repmi.test.VoidTest;
+
+class ACP extends VoidTest {
 
     public final int MAX_RELATIONS = 50;
 
@@ -42,10 +44,14 @@ class ACP {
 
     int poz_change;
 
-    public ACP(int cpu, int numVariables, int numValues, int numConnections,
+   /* public ACP(int cpu, int numVariables, int numValues, int numConnections,
             int numRelations, int numRelationPairs, int seed, i_Data data,
             i_Work work, i_Matrix matrix) {
-
+*/
+    public ACP(int numVariables, int numValues, int numConnections,
+            int numRelations, int numRelationPairs, int seed, int ncpus) {
+        
+        super(ncpus);
         this.numVariables = numVariables;
         this.numValues = numValues;
         this.numConnections = numConnections;
@@ -266,23 +272,15 @@ class ACP {
 
     public static void main(String args[]) {
 
-        try {
-            PoolInfo info = new PoolInfo(null, true);
+        try {            
             int numVariables;
             int numValues;
             int numConnections;
             int numRelations;
             int numRelationPairs;
             int seed;
-            i_Data data = null;
-            i_Work work = null;
-            i_Matrix matrix = null;
+            
             Input in;
-
-            int cpu = info.rank();
-
-            RMI_init.getRegistry(
-                    info.getInetAddress(cpu).getHostAddress());
 
             if (args.length != 1) {
                 System.out.println("Usage : ACP <inputfile>");
@@ -329,8 +327,8 @@ class ACP {
             work = (i_Work) RMI_init.lookup("//"
                     + info.getInetAddress(0).getHostAddress() + "/Work");
 
-            new ACP(info.rank(), numVariables, numValues, numConnections,
-                    numRelations, numRelationPairs, seed, data, work, matrix)
+            new ACP(numVariables, numValues, numConnections,
+                    numRelations, numRelationPairs, seed, matrix)
                     .start();
 
         } catch (Exception e) {

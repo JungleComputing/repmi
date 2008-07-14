@@ -6,6 +6,7 @@ import ibis.repmi.protocol.LTMProtocol;
 import ibis.repmi.protocol.LTVector;
 import ibis.repmi.protocol.MyResizeHandler;
 import ibis.repmi.protocol.ProcessIdentifier;
+import ibis.repmi.protocol.Replicateable;
 
 import java.io.IOException;
 
@@ -31,15 +32,26 @@ public class VoidTest {
     Ibis ibis;
 
     MyResizeHandler mrh;
+    
+    protected Replicateable ro;
 
-    public VoidTest(long nops, int plwa, int plwm, int ncpus, long timeout) {
-
-        TIMEOUT = timeout;
+    public VoidTest(long nops, int plwa, int plwm, int ncpus, Replicateable RO) {
+       
         NOPS = nops;
         pLWA = plwa;
         pLWM = plwm;
         NCPUS = ncpus;
+        ro = RO;
     }
+
+        
+    public VoidTest(int ncpus, Replicateable RO) {
+        super();
+        NCPUS = ncpus;
+        ro = RO;
+    }
+
+
 
     public void run() {
 
@@ -148,8 +160,8 @@ public class VoidTest {
         // MEAS
         proto.setMAXVAL(NOPS);
         proto.setNCPUS(NCPUS);
-        ReplicatedAccount ra = new ReplicatedAccount();
-        proto.setReplicatedObject(ra);
+                
+        proto.setReplicatedObject(ro);
 
         int size = ibis.registry().getPoolSize();
 

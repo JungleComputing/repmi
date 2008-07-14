@@ -2,6 +2,7 @@ package ibis.repmi.test;
 
 import java.io.IOException;
 
+import ibis.repmi.protocol.Replicateable;
 import ibis.repmi.protocol.ReplicatedMethod;
 
 public class OneWriteToMany extends VoidTest {
@@ -9,9 +10,9 @@ public class OneWriteToMany extends VoidTest {
     protected String writerCluster;
 
     public OneWriteToMany(long nops, int plwa, int plwm, int ncpus,
-            long timeout, String wC) {
+            String wC, Replicateable ro) {
 
-        super(nops, plwa, plwm, ncpus, timeout);
+        super(nops, plwa, plwm, ncpus, ro);
         writerCluster = wC;
     }
 

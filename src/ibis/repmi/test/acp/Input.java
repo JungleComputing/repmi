@@ -1,6 +1,6 @@
-/* $Id$ */
 
-package acp;
+
+package ibis.repmi.test.acp;
 
 
 import java.io.BufferedInputStream;

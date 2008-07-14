@@ -1,6 +1,4 @@
-/* $Id$ */
-
-package acp;
+package ibis.repmi.test.acp;
 
 class NoSolutionException extends Exception {
 

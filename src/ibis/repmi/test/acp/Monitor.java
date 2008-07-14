@@ -1,6 +1,5 @@
-/* $Id$ */
 
-package acp;
+package ibis.repmi.test.acp;
 
 class Monitor extends Thread {
 

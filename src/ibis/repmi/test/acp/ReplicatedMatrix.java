@@ -1,12 +1,11 @@
-/* $Id$ */
 
-package acp;
+package ibis.repmi.test.acp;
+
+import java.io.Serializable;
 
 
-import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
 
-class Matrix extends UnicastRemoteObject implements i_Matrix {
+class ReplicatedMatrix implements ReplicatedMatrixInterface, Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -14,11 +13,11 @@ class Matrix extends UnicastRemoteObject implements i_Matrix {
 
     int x, y;
 
-    Matrix[] all_matrix;
+    ReplicatedMatrix[] all_matrix;
 
     int hosts, cpu;
 
-    Matrix(int x, int y, boolean value) throws RemoteException {
+    ReplicatedMatrix(int x, int y, boolean value) {
 
         this.x = x;
         this.y = y;
@@ -32,12 +31,12 @@ class Matrix extends UnicastRemoteObject implements i_Matrix {
         }
     }
 
-    public synchronized boolean[][] getValue() throws RemoteException {
+    public synchronized boolean[][] getValue() {
         return matrix;
     }
 
     public synchronized void change(int x, int[] list_change, int poz_change)
-            throws RemoteException {
+           {
 
         for (int i = 0; i < poz_change; i++) {
             matrix[x][list_change[i]] = false;

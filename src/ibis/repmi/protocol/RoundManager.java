@@ -45,6 +45,8 @@ public class RoundManager {
 
     private long recoveryRound = 0; // by default i am in no recovery round
 
+    private long recoveredRounds = 0; // by default i am in no recovery round
+    
     private boolean inRecovery = false;
 
     private PIList crashed, crashedNextRound, crashedInRecovery, currentD,
@@ -501,6 +503,7 @@ public class RoundManager {
             crashedInRecovery.clear();
             inRecovery = false;
             recoveryRound = 0;
+            recoveredRounds ++ ;
         }
 
         
@@ -520,5 +523,9 @@ public class RoundManager {
     public void incNoConn() {
         // TODO Auto-generated method stub
         expectedNo++;
+    }
+
+    public long getRecoveredRounds() {
+        return recoveredRounds;
     }
 }

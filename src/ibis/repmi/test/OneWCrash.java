@@ -46,7 +46,7 @@ public class OneWCrash extends VoidTest {
             System.out.println("Time per operation (lops): "
                     + (double) (end - start - proto.recoveryTime) / NOPS);
             System.err.println("Time per recovery round: "
-                    + (double) proto.recoveryTime / 1);
+                    + (double) proto.recoveryTime / proto.recoveredRounds);
             
             proto.testReady();
         } else {

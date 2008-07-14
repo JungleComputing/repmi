@@ -18,13 +18,7 @@ class ACP extends VoidTest {
 
     int seed;
 
-    int cpu;
-
-    i_Matrix matrix;
-
-    i_Data data;
-
-    i_Work work;
+    ReplicatedMatrix matrix;
 
     Relation[] relations;
 
@@ -44,25 +38,19 @@ class ACP extends VoidTest {
 
     int poz_change;
 
-   /* public ACP(int cpu, int numVariables, int numValues, int numConnections,
-            int numRelations, int numRelationPairs, int seed, i_Data data,
-            i_Work work, i_Matrix matrix) {
-*/
     public ACP(int numVariables, int numValues, int numConnections,
-            int numRelations, int numRelationPairs, int seed, int ncpus) {
-        
-        super(ncpus);
+            int numRelations, int numRelationPairs, int seed, int ncpus,
+            ReplicatedMatrix matrix) {
+
+        super(ncpus, matrix);
         this.numVariables = numVariables;
         this.numValues = numValues;
         this.numConnections = numConnections;
         this.numRelations = numRelations;
         this.numRelationPairs = numRelationPairs;
-        this.seed = seed;
-        this.data = data;
-        this.work = work;
+        this.seed = seed;        
         this.matrix = matrix;
-        this.cpu = cpu;
-
+        
         poz_change = removed = 0;
         checks = 0;
 
@@ -86,23 +74,17 @@ class ACP extends VoidTest {
     boolean sprevise(int i, int j, boolean[][] local, Relation rel)
             throws Exception {
 
-        /* Test if there is a relation between var_i and var_j :
-
-         for every legal value of var_i :
-         for every legal value of var_j :
-         test if var_j supports var_i
-
-         if var_i is not supported 
-         remove it
-         something is modified
-         else 
-         there is a solution
-
-         if !solution found
-         panic
-         else 
-         return if something was modified
-
+        /*
+         * Test if there is a relation between var_i and var_j :
+         * 
+         * for every legal value of var_i : for every legal value of var_j :
+         * test if var_j supports var_i
+         * 
+         * if var_i is not supported remove it something is modified else there
+         * is a solution
+         * 
+         * if !solution found panic else return if something was modified
+         * 
          */
 
         boolean modified, solution, support;
@@ -156,16 +138,10 @@ class ACP extends VoidTest {
         }
 
         /*
-         if (modified) {
-         System.out.println("Removed " + removed);
-
-         for ( i = 0;i<numVariables;i++) {
-         for ( j= 0;j<numValues;j++) {
-         System.out.print((local[i][j] ? "1" : "0"));
-         }
-         System.out.println();
-         }
-         }
+         * if (modified) { System.out.println("Removed " + removed);
+         * 
+         * for ( i = 0;i<numVariables;i++) { for ( j= 0;j<numValues;j++) {
+         * System.out.print((local[i][j] ? "1" : "0")); } System.out.println(); } }
          */
 
         return modified;
@@ -191,7 +167,8 @@ class ACP extends VoidTest {
 
                     if (work_list[i]) {
 
-                        work.vote(i, false); // HACK : i might have become true again....
+                        work.vote(i, false); // HACK : i might have become
+                                                // true again....
                         i_change = false;
                         poz_change = 0;
 
@@ -209,7 +186,8 @@ class ACP extends VoidTest {
                         if (i_change) {
                             local_change = true;
                             matrix.change(i, list_change, poz_change);
-                            //System.out.println(cpu + " change " + poz_change);
+                            // System.out.println(cpu + " change " +
+                            // poz_change);
                             change_ops++;
                             work.announce(i);
                         }
@@ -221,9 +199,9 @@ class ACP extends VoidTest {
             nr_modif++;
         }
 
-        //		System.out.println(cpu + " Revise : " + revise);
-        //		System.out.println(cpu + " Checks : " + checks);
-        //		System.out.println(cpu + " Modif  : " + nr_modif);
+        // System.out.println(cpu + " Revise : " + revise);
+        // System.out.println(cpu + " Checks : " + checks);
+        // System.out.println(cpu + " Modif : " + nr_modif);
 
     }
 
@@ -231,7 +209,9 @@ class ACP extends VoidTest {
 
         long start, end;
 
-        if (cpu == 0) {
+        super.run();
+        
+        if (super == 0) {
             System.out.println("" + this);
         }
 
@@ -272,18 +252,19 @@ class ACP extends VoidTest {
 
     public static void main(String args[]) {
 
-        try {            
+        try {
             int numVariables;
             int numValues;
             int numConnections;
             int numRelations;
             int numRelationPairs;
             int seed;
-            
+            int ncpus;
+
             Input in;
 
-            if (args.length != 1) {
-                System.out.println("Usage : ACP <inputfile>");
+            if (args.length != 2) {
+                System.out.println("Usage : ACP <inputfile> <ncpus>");
                 System.exit(1);
             }
 
@@ -305,31 +286,14 @@ class ACP extends VoidTest {
             in.readln();
 
             seed = in.readInt();
+            
+            ncpus = Integer.parseInt(args[1]);
 
-            if (cpu == 0) {
+            ReplicatedMatrix matrix = new ReplicatedMatrix(numVariables,
+                    numValues, true);
 
-                Matrix m = new Matrix(numVariables, numValues, true);
-                RMI_init.bind("Matrix", m);
-
-                Data d = new Data(info.size());
-                RMI_init.bind("Data", d);
-
-                Work w = new Work(numVariables, info.size(), numVariables,
-                        numValues, numConnections, numRelations,
-                        numRelationPairs, seed);
-                RMI_init.bind("Work", w);
-            }
-
-            matrix = (i_Matrix) RMI_init.lookup("//"
-                    + info.getInetAddress(0).getHostAddress() + "/Matrix");
-            data = (i_Data) RMI_init.lookup("//"
-                    + info.getInetAddress(0).getHostAddress() + "/Data");
-            work = (i_Work) RMI_init.lookup("//"
-                    + info.getInetAddress(0).getHostAddress() + "/Work");
-
-            new ACP(numVariables, numValues, numConnections,
-                    numRelations, numRelationPairs, seed, matrix)
-                    .start();
+            new ACP(numVariables, numValues, numConnections, numRelations,
+                    numRelationPairs, seed, ncpus, matrix).start();
 
         } catch (Exception e) {
             System.out.println("OOPS: main got exception " + e);
@@ -338,4 +302,3 @@ class ACP extends VoidTest {
 
     }
 }
-

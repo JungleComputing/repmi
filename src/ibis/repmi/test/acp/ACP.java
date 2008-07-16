@@ -4,301 +4,301 @@ import ibis.repmi.test.VoidTest;
 
 class ACP extends VoidTest {
 
-    public final int MAX_RELATIONS = 50;
+	public final int MAX_RELATIONS = 50;
 
-    int numVariables;
+	int numVariables;
 
-    int numValues;
+	int numValues;
 
-    int numConnections;
+	int numConnections;
 
-    int numRelations;
+	int numRelations;
 
-    int numRelationPairs;
+	int numRelationPairs;
 
-    int seed;
+	int seed;
 
-    ReplicatedMatrix matrix;
+	ReplicatedMatrix matrix;
 
-    Relation[] relations;
+	Relation[] relations;
 
-    Constraints constraints;
+	Constraints constraints;
 
-    int removed;
+	int removed;
 
-    long checks;
+	long checks;
 
-    int revise = 0;
+	int revise = 0;
 
-    int change_ops = 0;
+	int change_ops = 0;
 
-    int nr_modif = 0;
+	int nr_modif = 0;
 
-    int[] list_change;
+	int[] list_change;
 
-    int poz_change;
+	int poz_change;
 
-    public ACP(int numVariables, int numValues, int numConnections,
-            int numRelations, int numRelationPairs, int seed, int ncpus,
-            ReplicatedMatrix matrix) {
+	public ACP(int numVariables, int numValues, int numConnections,
+			int numRelations, int numRelationPairs, int seed, int cpu,
+			int ncpus, ReplicatedMatrix matrix) {
 
-        super(ncpus, matrix);
-        this.numVariables = numVariables;
-        this.numValues = numValues;
-        this.numConnections = numConnections;
-        this.numRelations = numRelations;
-        this.numRelationPairs = numRelationPairs;
-        this.seed = seed;        
-        this.matrix = matrix;
-        
-        poz_change = removed = 0;
-        checks = 0;
+		super(cpu, ncpus, matrix);
+		this.numVariables = numVariables;
+		this.numValues = numValues;
+		this.numConnections = numConnections;
+		this.numRelations = numRelations;
+		this.numRelationPairs = numRelationPairs;
+		this.seed = seed;
+		this.matrix = matrix;
 
-        list_change = new int[numValues];
+		poz_change = removed = 0;
+		checks = 0;
 
-        // GenerateRelations.
-        relations = new Relation[numRelations];
+		list_change = new int[numValues];
 
-        OrcaRandom random = new OrcaRandom(seed);
+		// GenerateRelations.
+		relations = new Relation[numRelations];
 
-        for (int h = 0; h < numRelations; h++) {
-            relations[h] = new Relation(numValues, h, random, numRelationPairs,
-                    numValues);
-        }
+		OrcaRandom random = new OrcaRandom(seed);
 
-        // GenerateConstraints
-        constraints = new Constraints(numVariables, numConnections,
-                numRelations, relations, new OrcaRandom(seed));
-    }
+		for (int h = 0; h < numRelations; h++) {
+			relations[h] = new Relation(numValues, h, random, numRelationPairs,
+					numValues);
+		}
 
-    boolean sprevise(int i, int j, boolean[][] local, Relation rel)
-            throws Exception {
+		// GenerateConstraints
+		constraints = new Constraints(numVariables, numConnections,
+				numRelations, relations, new OrcaRandom(seed));
+	}
 
-        /*
-         * Test if there is a relation between var_i and var_j :
-         * 
-         * for every legal value of var_i : for every legal value of var_j :
-         * test if var_j supports var_i
-         * 
-         * if var_i is not supported remove it something is modified else there
-         * is a solution
-         * 
-         * if !solution found panic else return if something was modified
-         * 
-         */
+	boolean sprevise(int i, int j, boolean[][] local, Relation rel)
+			throws Exception {
 
-        boolean modified, solution, support;
+		/*
+		 * Test if there is a relation between var_i and var_j :
+		 * 
+		 * for every legal value of var_i : for every legal value of var_j :
+		 * test if var_j supports var_i
+		 * 
+		 * if var_i is not supported remove it something is modified else there
+		 * is a solution
+		 * 
+		 * if !solution found panic else return if something was modified
+		 * 
+		 */
 
-        revise++;
+		boolean modified, solution, support;
 
-        modified = solution = false;
+		revise++;
 
-        for (int k = 0; k < numValues; k++) {
+		modified = solution = false;
 
-            if (local[i][k]) {
+		for (int k = 0; k < numValues; k++) {
 
-                support = false;
+			if (local[i][k]) {
 
-                for (int l = 0; l < numValues; l++) {
+				support = false;
 
-                    if (local[j][l]) {
+				for (int l = 0; l < numValues; l++) {
 
-                        checks++;
+					if (local[j][l]) {
 
-                        if (i < j) {
-                            if (rel.test(k, l)) {
-                                support = true;
-                                break;
-                            }
-                        } else {
-                            if (rel.test(l, k)) {
-                                support = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!support) {
-                    removed++;
-                    local[i][k] = false;
-                    list_change[poz_change++] = k;
-                    modified = true;
-                } else {
-                    solution = true;
-                }
-
-            }
-
-        }
-
-        if (!solution) {
-            System.out.println("No solution for " + i + " " + j);
-            throw new NoSolutionException();
-        }
-
-        /*
-         * if (modified) { System.out.println("Removed " + removed);
-         * 
-         * for ( i = 0;i<numVariables;i++) { for ( j= 0;j<numValues;j++) {
-         * System.out.print((local[i][j] ? "1" : "0")); } System.out.println(); } }
-         */
-
-        return modified;
-    }
-
-    void spac_loop() throws Exception {
-
-        boolean local_change, i_change, temp;
-        boolean[] work_list;
-        boolean[][] local;
+						checks++;
 
-        while (work.workFor(cpu)) {
-
-            local_change = true;
-
-            while (local_change) {
-
-                local_change = false;
-                work_list = work.getWork(cpu);
-                local = matrix.getValue();
-
-                for (int i = 0; i < numVariables; i++) {
-
-                    if (work_list[i]) {
-
-                        work.vote(i, false); // HACK : i might have become
-                                                // true again....
-                        i_change = false;
-                        poz_change = 0;
-
-                        for (int j = 0; j < numVariables; j++) {
-                            if (i != j) {
-                                if (constraints.relation(i, j)) {
-                                    temp = sprevise(i, j, local, constraints
-                                            .get(i, j));
-                                    i_change = i_change || temp;
-                                    // be careful with lazy evaluation here !
-                                }
-                            }
-                        }
+						if (i < j) {
+							if (rel.test(k, l)) {
+								support = true;
+								break;
+							}
+						} else {
+							if (rel.test(l, k)) {
+								support = true;
+								break;
+							}
+						}
+					}
+				}
+
+				if (!support) {
+					removed++;
+					local[i][k] = false;
+					list_change[poz_change++] = k;
+					modified = true;
+				} else {
+					solution = true;
+				}
+
+			}
+
+		}
+
+		if (!solution) {
+			System.out.println("No solution for " + i + " " + j);
+			throw new NoSolutionException();
+		}
+
+		/*
+		 * if (modified) { System.out.println("Removed " + removed);
+		 * 
+		 * for ( i = 0;i<numVariables;i++) { for ( j= 0;j<numValues;j++) {
+		 * System.out.print((local[i][j] ? "1" : "0")); } System.out.println(); } }
+		 */
 
-                        if (i_change) {
-                            local_change = true;
-                            matrix.change(i, list_change, poz_change);
-                            // System.out.println(cpu + " change " +
-                            // poz_change);
-                            change_ops++;
-                            work.announce(i);
-                        }
-                    }
-                }
-            }
+		return modified;
+	}
+
+	void spac_loop() throws Exception {
 
-            work.ready(cpu);
-            nr_modif++;
-        }
+		boolean local_change, i_change, temp;
+		boolean[] work_list;
+		boolean[][] local;
 
-        // System.out.println(cpu + " Revise : " + revise);
-        // System.out.println(cpu + " Checks : " + checks);
-        // System.out.println(cpu + " Modif : " + nr_modif);
+		while (work.workFor(cpu)) {
 
-    }
+			local_change = true;
 
-    void start() throws Exception {
+			while (local_change) {
+
+				local_change = false;
+				work_list = work.getWork(cpu);
+				local = matrix.getValue();
+
+				for (int i = 0; i < numVariables; i++) {
 
-        long start, end;
+					if (work_list[i]) {
+
+						work.vote(i, false); // HACK : i might have become
+						// true again....
+						i_change = false;
+						poz_change = 0;
 
-        super.run();
-        
-        if (super == 0) {
-            System.out.println("" + this);
-        }
+						for (int j = 0; j < numVariables; j++) {
+							if (i != j) {
+								if (constraints.relation(i, j)) {
+									temp = sprevise(i, j, local, constraints
+											.get(i, j));
+									i_change = i_change || temp;
+									// be careful with lazy evaluation here !
+								}
+							}
+						}
 
-        // RuntimeSystem.barrier();
+						if (i_change) {
+							local_change = true;
+							matrix.change(i, list_change, poz_change);
+							// System.out.println(cpu + " change " +
+							// poz_change);
+							change_ops++;
+							work.announce(i);
+						}
+					}
+				}
+			}
 
-        start = System.currentTimeMillis();
+			work.ready(cpu);
+			nr_modif++;
+		}
 
-        try {
-            spac_loop();
-        } catch (NoSolutionException e) {
-            System.out.println("No solution found!");
-        }
+		// System.out.println(cpu + " Revise : " + revise);
+		// System.out.println(cpu + " Checks : " + checks);
+		// System.out.println(cpu + " Modif : " + nr_modif);
 
-        end = System.currentTimeMillis();
+	}
 
-        data.put(cpu, removed, checks, (end - start), nr_modif, change_ops,
-                revise);
+	void start() throws Exception {
 
-        if (cpu == 0) {
-            System.out.println(data.result());
-        }
+		long start, end;
 
-        System.exit(0);
-    }
+		super.run();
 
-    public String toString() {
+		if (super.pLWA == 0) {
+			System.out.println("" + this);
+		}
 
-        String temp = "ACP\n";
+		// RuntimeSystem.barrier();
 
-        temp += "Number of variables            " + numVariables + "\n";
-        temp += "Number of values               " + numValues + "\n";
-        temp += "Number of connections/variable " + numConnections + "\n";
-        temp += "Number of relations            " + numRelations + "\n";
-        temp += "Number of relation pairs       " + numRelationPairs + "\n";
+		start = System.currentTimeMillis();
 
-        return temp;
-    }
+		try {
+			spac_loop();
+		} catch (NoSolutionException e) {
+			System.out.println("No solution found!");
+		}
 
-    public static void main(String args[]) {
+		end = System.currentTimeMillis();
 
-        try {
-            int numVariables;
-            int numValues;
-            int numConnections;
-            int numRelations;
-            int numRelationPairs;
-            int seed;
-            int ncpus;
+		data.put(cpu, removed, checks, (end - start), nr_modif, change_ops,
+				revise);
 
-            Input in;
+		if (super.pLWA == 0) {
+			System.out.println(data.result());
+		}
 
-            if (args.length != 2) {
-                System.out.println("Usage : ACP <inputfile> <ncpus>");
-                System.exit(1);
-            }
+		System.exit(0);
+	}
 
-            in = new Input(args[0]);
+	public String toString() {
 
-            numVariables = in.readInt();
-            in.readln();
+		String temp = "ACP\n";
 
-            numValues = in.readInt();
-            in.readln();
+		temp += "Number of variables            " + numVariables + "\n";
+		temp += "Number of values               " + numValues + "\n";
+		temp += "Number of connections/variable " + numConnections + "\n";
+		temp += "Number of relations            " + numRelations + "\n";
+		temp += "Number of relation pairs       " + numRelationPairs + "\n";
 
-            numConnections = in.readInt();
-            in.readln();
+		return temp;
+	}
 
-            numRelations = in.readInt();
-            in.readln();
+	public static void main(String args[]) {
 
-            numRelationPairs = in.readInt();
-            in.readln();
+		try {
+			int numVariables;
+			int numValues;
+			int numConnections;
+			int numRelations;
+			int numRelationPairs;
+			int seed;
+			int ncpus;
 
-            seed = in.readInt();
-            
-            ncpus = Integer.parseInt(args[1]);
+			Input in;
 
-            ReplicatedMatrix matrix = new ReplicatedMatrix(numVariables,
-                    numValues, true);
+			if (args.length != 2) {
+				System.out.println("Usage : ACP <inputfile> <ncpus>");
+				System.exit(1);
+			}
 
-            new ACP(numVariables, numValues, numConnections, numRelations,
-                    numRelationPairs, seed, ncpus, matrix).start();
+			in = new Input(args[0]);
 
-        } catch (Exception e) {
-            System.out.println("OOPS: main got exception " + e);
-            e.printStackTrace();
-        }
+			numVariables = in.readInt();
+			in.readln();
 
-    }
+			numValues = in.readInt();
+			in.readln();
+
+			numConnections = in.readInt();
+			in.readln();
+
+			numRelations = in.readInt();
+			in.readln();
+
+			numRelationPairs = in.readInt();
+			in.readln();
+
+			seed = in.readInt();
+
+			ncpus = Integer.parseInt(args[1]);
+
+			ReplicatedMatrix matrix = new ReplicatedMatrix(numVariables,
+					numValues, true);
+
+			new ACP(numVariables, numValues, numConnections, numRelations,
+					numRelationPairs, seed, ncpus, matrix).start();
+
+		} catch (Exception e) {
+			System.out.println("OOPS: main got exception " + e);
+			e.printStackTrace();
+		}
+
+	}
 }

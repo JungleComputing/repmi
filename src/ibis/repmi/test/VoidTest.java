@@ -45,8 +45,9 @@ public class VoidTest {
     }
 
         
-    public VoidTest(int ncpus, Replicateable RO) {
+    public VoidTest(int cpu, int ncpus, Replicateable RO) {
         super();
+        pLWA = cpu;
         NCPUS = ncpus;
         ro = RO;
     }
